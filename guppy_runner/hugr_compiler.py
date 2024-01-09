@@ -3,7 +3,6 @@
 
 from enum import Enum
 from pathlib import Path
-from tempfile import TemporaryFile
 
 
 class MlirMode(Enum):
@@ -13,12 +12,12 @@ class MlirMode(Enum):
     TEXTUAL = 1
 
 
-def hugr_to_mlir(hugr_json: Path, mlir_out: Path | None, mode: MlirMode) -> Path:
-    """Compile the input Hugr json encoding a Guppy program into a LLVMIR object.
+def hugr_to_mlir(hugr_msgpack: Path, mlir_out: Path | None, mode: MlirMode) -> Path:
+    """Compile the input Hugr msgpack encoding a Guppy program into a LLVMIR object.
 
     ## Parameters
-    hugr_json: Path
-        The path to the input Hugr json file.
+    hugr_msgpack: Path
+        The path to the input Hugr msgpack file.
     mlir_out: Path | None
         The path to the output file.
     textual: bool
@@ -27,9 +26,5 @@ def hugr_to_mlir(hugr_json: Path, mlir_out: Path | None, mode: MlirMode) -> Path
     ## Returns
     Returns the path to the output file.
     """
-    mlir_out: Path = mlir_out or Path(
-        TemporaryFile(mode="w", prefix="mlir_", suffix=".mlir"),
-    )
-
-    _ = (hugr_json, mlir_out, mode)
+    _ = (hugr_msgpack, mlir_out, mode)
     raise NotImplementedError

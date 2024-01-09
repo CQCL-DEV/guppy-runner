@@ -58,6 +58,9 @@ select = [
     "UP",  # pyupgrade
     "YTT", # flake8-2020
 ]
+ignore = [
+    "ANN101", # Missing type annotation for `self`
+]
 
 [per-file-ignores]
 "__init__.py" = ["F401"] # module imported but unused

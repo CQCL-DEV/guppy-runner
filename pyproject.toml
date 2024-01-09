@@ -11,9 +11,12 @@ guppy-runner = "guppy_runner.__main__:main"
 
 [tool.poetry.dependencies]
 python = "^3.11"
+guppy = { path = "../guppy", develop = true }
 
 [tool.poetry.group.dev.dependencies]
 pre-commit = ">=2.10"
+pyright = ">=1.1.345"
+ruff = ">=0.1.11"
 
 [build-system]
 requires = ["poetry-core"]

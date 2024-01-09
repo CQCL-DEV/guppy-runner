@@ -2,8 +2,8 @@ install:
 	poetry update
 	poetry install
 
-run:
-	poetry run guppy-runner
+run *PARAMS:
+	poetry run guppy-runner {{PARAMS}}
 
 lint:
 	pre-commit run --all-files
