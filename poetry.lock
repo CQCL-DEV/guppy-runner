@@ -61,7 +61,7 @@ description = ""
 optional = false
 python-versions = ">=3.9"
 files = []
-develop = true
+develop = false
 
 [package.dependencies]
 graphviz = "*"
@@ -390,4 +390,4 @@ test = ["covdefaults (>=2.3)", "coverage (>=7.2.7)", "coverage-enable-subprocess
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "570a1e2868537d038f26261bc1d41d667f41edbcd4e0a0c3ef0dcf7a8a0875bf"
+content-hash = "a6b95df521e82f93a3b4d8ae28d20b80a0663cbd9ca5d55e15d561f4f7b8848f"

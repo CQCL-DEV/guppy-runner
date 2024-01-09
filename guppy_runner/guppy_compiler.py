@@ -7,7 +7,8 @@ __all__ = [
     "NotAGuppyError",
 ]
 
-import importlib
+import importlib.machinery
+import types
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 
@@ -27,11 +28,11 @@ def guppy_to_hugr(guppy: Path, hugr_out: Path | None) -> Path:
     serial_hugr = hugr.serialize()
 
     if hugr_out:
-        with hugr_out.open(mode="w") as hugr_file:
+        with hugr_out.open(mode="wb") as hugr_file:
             hugr_file.write(serial_hugr)
     else:
         with NamedTemporaryFile(
-            mode="w",
+            mode="wb",
             prefix="hugr_",
             suffix=".msgpack",
             delete=False,
@@ -44,10 +45,13 @@ def guppy_to_hugr(guppy: Path, hugr_out: Path | None) -> Path:
 
 def _load_module(guppy: Path) -> GuppyModule:
     """Load the input Guppy program as a Python module."""
+    loader = importlib.machinery.SourceFileLoader("main", str(guppy))
+    py_module = types.ModuleType(loader.name)
     try:
-        py_module = importlib.import_module(str(guppy))
-    except ModuleNotFoundError as err:
+        loader.exec_module(py_module)
+    except FileNotFoundError as err:
         raise InvalidGuppyModuleError(guppy) from err
+
     if "main" not in py_module.__dir__():
         raise MissingMainError(guppy)
     if not isinstance(py_module.main, GuppyModule):
