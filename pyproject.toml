@@ -5,10 +5,15 @@ description = ""
 authors = ["Agustin Borgna <agustin.borgna@quantinuum.com>"]
 readme = "README.md"
 license = "Apache-2.0"
-requires-python = ">=3.11"
+
+[tool.poetry.scripts]
+guppy-runner = "guppy_runner.__main__:main"
 
 [tool.poetry.dependencies]
 python = "^3.11"
+
+[tool.poetry.group.dev.dependencies]
+pre-commit = ">=2.10"
 
 [build-system]
 requires = ["poetry-core"]
