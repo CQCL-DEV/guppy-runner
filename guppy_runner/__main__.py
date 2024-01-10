@@ -191,21 +191,21 @@ def main() -> None:
     if stage_data.stage == Stage.HUGR:
         try:
             stage_data = HugrCompiler().run(stage_data, mlir_out=args.store_mlir)
-        except HugrCompilerError as err:  # noqa: BLE001
+        except HugrCompilerError as err:
             exit_with_error(str(err))
     exit_if_done(stage_data.stage, args)
 
     if stage_data.stage == Stage.MLIR:
         try:
             stage_data = MLIRCompiler().run(stage_data, llvm_out=args.store_llvm)
-        except MLIRCompilerError as err:  # noqa: BLE001
+        except MLIRCompilerError as err:
             exit_with_error(str(err))
     exit_if_done(stage_data.stage, args)
 
     assert stage_data.stage == Stage.LLVM
     try:
         run_artifact(stage_data)
-    except RunnerError as err:  # noqa: BLE001
+    except RunnerError as err:
         exit_with_error(str(err))
     exit_if_done(stage_data.stage, args)
 
