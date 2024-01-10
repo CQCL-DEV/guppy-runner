@@ -8,16 +8,21 @@ The execution is composed of three steps:
     - Produce a runnable artifact from the LLVMIR file and the `qir-runner` runtime.
 """
 
+import logging
 import sys
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
 
-from guppy_runner.guppy_compiler import GuppyCompilerError, guppy_to_hugr
-from guppy_runner.hugr_compiler import MlirMode, hugr_to_mlir
-from guppy_runner.mlir_compiler import compile_mlir
+from guppy_runner.guppy_compiler import GuppyCompiler, GuppyCompilerError
+from guppy_runner.hugr_compiler import HugrCompiler
+from guppy_runner.mlir_compiler import MLIRCompiler
+from guppy_runner.runner import run_artifact
+from guppy_runner.workflow import EncodingMode, Stage, StageData
+
+LOGGER = logging.getLogger(__name__)
 
 
-def arg_parser() -> ArgumentParser:
+def parse_args() -> Namespace:
     """Returns a parser for the command line arguments."""
     parser = ArgumentParser(
         description="Compile a Guppy program into a runnable artifact.",
@@ -25,151 +30,212 @@ def arg_parser() -> ArgumentParser:
 
     # Input options
 
-    input_args = parser.add_mutually_exclusive_group(required=True)
+    input_args = parser.add_argument_group("Input options")
     input_args.add_argument(
-        "-g",
-        "--guppy",
+        "-i",
+        "--input",
         type=Path,
-        metavar="GUPPY_DIR",
-        help="Input Guppy program.",
+        metavar="INPUT",
+        help="Input program.\n"
+        "By default, this expects a Guppy program (.py)"
+        "which defines a `main` GuppyModule."
+        "If not given, the input is read from stdin.",
     )
-    input_args.add_argument(
+    input_mode = input_args.add_mutually_exclusive_group()
+    input_mode.add_argument(
         "--hugr",
-        type=Path,
-        metavar="HUGR.msgpack",
-        help="Pre-compiled Hugr msgpack.",
+        type=bool,
+        action="store_true",
+        help="Read the input as an encoded Hugr.\n"
+        "The input file extension determines whether the file is encoded in msgpack or "
+        "json. Use `--bitcode` to `--textual` to override this.",
     )
-    input_args.add_argument(
+    input_mode.add_argument(
         "--mlir",
+        type=bool,
+        action="store_true",
+        help="Read the input as an mlir file.",
+    )
+    input_mode.add_argument(
+        "--llvm",
+        type=bool,
+        action="store_true",
+        help="Read the input as an LLVMIR file.",
+    )
+
+    input_encoding = input_args.add_mutually_exclusive_group()
+    input_encoding.add_argument(
+        "--bitcode",
+        type=bool,
+        action="store_true",
+        help="Parse the input in binary mode. "
+        "By default, the encoding mode is detected from the file extension "
+        "if possible.",
+    )
+    input_encoding.add_argument(
+        "--textual",
+        type=bool,
+        action="store_true",
+        help="Parse the input in human-readable textual mode. "
+        "By default, the encoding mode is detected from the file extension "
+        "if possible.",
+    )
+
+    # Intermediary output options
+
+    artifacts = parser.add_argument_group("Intermediary artifact outputs.")
+    artifacts.add_argument(
+        "--store-hugr",
+        type=Path,
+        metavar="HUGR_OUTPUT[.msgpack|.json]",
+        help="Store the intermediary Hugr object. "
+        "The file extension determines whether the file is encoded in msgpack or json.",
+    )
+    artifacts.add_argument(
+        "--store-mlir",
         type=Path,
         metavar="MLIR.mlir",
-        help="Pre-compiled LLVMIR (bitcode or textual) object.",
+        help="Store the intermediary MLIR object, in textual mode.",
+        # TODO: Support bitcode too.  # noqa: TD002, TD003, FIX002
+        # Can we detect the encoding mode from the file extension?
     )
-
-    # Hugr output options
-
-    hugr_out = parser.add_argument_group("Hugr output options")
-    hugr_out.add_argument(
-        "--hugr-output",
+    artifacts.add_argument(
+        "--store-llvm",
         type=Path,
-        metavar="HUGR_OUTPUT.msgpack",
-        help="Hugr msgpack output file.",
-    )
-
-    # MLIR output options
-
-    mlir_out = parser.add_argument_group("MLIR output options")
-    mlir_out.add_argument(
-        "--mlir-output",
-        type=Path,
-        metavar="MLIR_OUTPUT.mlir",
-        help="MLIR output file.",
-    )
-    mlir_out.add_argument(
-        "--textual",
-        action="store_const",
-        dest="mlir_mode",
-        const=MlirMode.TEXTUAL,
-        default=MlirMode.BITCODE,
-        help="Produce textual LLVMIR instead of bitcode.",
+        metavar="LLVM.llvmir",
+        help="Store the intermediary LLVMIR object, in textual mode.",
+        # TODO: Support bitcode too.  # noqa: TD002, TD003, FIX002
+        # Can we detect the encoding mode from the file extension?
     )
 
     # Runnable artifact options
 
-    runnable_out = parser.add_argument_group("Runnable artifact options")
-    runnable_out.add_argument(
+    runnable = parser.add_argument_group("Runnable artifact options")
+    runnable.add_argument(
         "-o",
         "--output",
         type=Path,
         metavar="OUTPUT",
         help="Runnable artifact output file.",
     )
+    runnable.add_argument(
+        "--no-run",
+        type=bool,
+        action="store_true",
+        help="Do not run the compiled artifact. "
+        "`guppy-runner` will produce any required intermediary files, "
+        "and terminate early.",
+    )
 
-    return parser
+    args = parser.parse_args()
+    args.input_stage = get_input_state(args)
+    args.input_encoding = get_input_encoding(args)
+    validate_args(args, parser)
+
+    return args
+
+
+def get_input_state(args: Namespace) -> Stage:
+    """The stage of the input file."""
+    if args.hugr:
+        return Stage.HUGR
+    if args.mlir:
+        return Stage.MLIR
+    if args.llvm:
+        return Stage.LLVM
+    return Stage.GUPPY
+
+
+def get_input_encoding(args: Namespace) -> EncodingMode:
+    """The stage of the input file.
+
+    If the encoding mode is not given, try to detect it from the file extension.
+    """
+    if args.textual:
+        return EncodingMode.TEXTUAL
+    if args.bitcode:
+        return EncodingMode.BITCODE
+
+    input_encoding = None
+    if args.input is not None:
+        input_encoding = EncodingMode.from_file(args.input, args.input_stage)
+    if input_encoding is None:
+        LOGGER.info(
+            "Cannot detect the encoding mode from the input file extension. "
+            "Defaulting to bitcode.",
+        )
+        input_encoding = EncodingMode.BITCODE
+    return input_encoding
+
+
+def validate_args(args: Namespace, parser: ArgumentParser) -> None:
+    """Validate whether can produce the intermediary artifacts from the input."""
+    if args.store_hugr and args.input_stage >= Stage.HUGR:
+        parser.error("Cannot produce a HUGR artifact from the given input.")
+    if args.store_mlir and args.input_stage >= Stage.MLIR:
+        parser.error("Cannot produce a MLIR artifact from the given input.")
+    if args.store_llvm and args.input_stage >= Stage.LLVM:
+        parser.error("Cannot produce a LLVM artifact from the given input.")
 
 
 def main() -> None:
     """Main entry point for the console script."""
-    parser = arg_parser()
-    args = parser.parse_args()
+    args = parse_args()
 
-    if not args.hugr_output and not args.mlir_output and not args.output:
-        parser.error(
-            "No output specified. "
-            "Use at least one of --hugr-output, --mlir-output, or --output.",
-        )
+    stage_data = StageData(
+        stage=args.input_stage,
+        file_path=args.input,
+        encoding=args.input_encoding,
+    )
 
-    # Compile the input Guppy program into a Hugr.
-    hugr_in = run_guppy_to_hugr(args, parser)
-    if not args.mlir_output and not args.output:
-        return
-
-    # Compile the Hugr into MLIR with `hugr-mlir`, and produce an LLVMIR output file
-    mlir_in = run_hugr_to_mlir(hugr_in, args, parser)
-    if not args.output:
-        return
-
-    # Produce a runnable artifact from the LLVMIR file and the `qir-runner` runtime.
-    run_mlir_to_artifact(mlir_in, args, parser)
-
-
-def run_guppy_to_hugr(args: Namespace, parser: ArgumentParser) -> Path | None:
-    """Compile the input Guppy program into a Hugr, if needed.
-
-    Returns the path to the compiled Hugr file.
-    """
-    hugr_in: Path = args.hugr
-    if args.guppy:
+    # Process the program, stage by stage.
+    if stage_data.stage == Stage.GUPPY:
         try:
-            hugr_in = guppy_to_hugr(args.guppy, args.hugr_output)
+            stage_data = GuppyCompiler().run(stage_data, hugr_out=args.store_hugr)
         except GuppyCompilerError as err:
             exit_with_error(str(err))
-    elif args.hugr is not None:
-        parser.error("Cannot produce a HUGR file from the given inputs.")
+    exit_if_done(stage_data.stage, args)
 
-    return hugr_in
-
-
-def run_hugr_to_mlir(
-    hugr_in: Path | None,
-    args: Namespace,
-    parser: ArgumentParser,
-) -> Path | None:
-    """Compile the input Hugr into a MLIR, if needed.
-
-    Returns the path to the compiled MLIR file.
-    """
-    mlir_in: Path = args.mlir
-    if hugr_in:
+    if stage_data.stage == Stage.HUGR:
         try:
-            mlir_in = hugr_to_mlir(hugr_in, args.mlir_output, args.mlir_mode)
+            stage_data = HugrCompiler().run(stage_data, mlir_out=args.store_mlir)
         except Exception as err:  # noqa: BLE001
             exit_with_error(str(err))
-    elif args.mlir is not None:
-        parser.error("Cannot produce a MLIR file from the given inputs.")
+    exit_if_done(stage_data.stage, args)
 
-    return mlir_in
-
-
-def run_mlir_to_artifact(
-    mlir_in: Path | None,
-    args: Namespace,
-    parser: ArgumentParser,
-) -> None:
-    """Compile the input MLIR into a runnable artifact."""
-    if mlir_in:
+    if stage_data.stage == Stage.MLIR:
         try:
-            compile_mlir(mlir_in, args.output)
+            stage_data = MLIRCompiler().run(stage_data, llvm_out=args.store_llvm)
         except Exception as err:  # noqa: BLE001
             exit_with_error(str(err))
-    elif args.output is not None:
-        parser.error("Cannot produce a runnable artifact from the given inputs.")
+    exit_if_done(stage_data.stage, args)
+
+    assert stage_data.stage == Stage.LLVM
+    try:
+        run_artifact(stage_data)
+    except Exception as err:  # noqa: BLE001
+        exit_with_error(str(err))
+    exit_if_done(stage_data.stage, args)
 
 
 def exit_with_error(msg: str) -> None:
     """Print an error message and exit with an error code."""
     print(f"Error: {msg}", file=sys.stderr)
     sys.exit(1)
+
+
+def exit_if_done(stage: Stage, args: Namespace) -> None:
+    """Exit if `--no-run` is set, and we already produced all the required artifacts."""
+    if not args.no_run:
+        return
+    if args.store_llvm and stage < Stage.LLVM:
+        return
+    if args.store_mlir and stage < Stage.MLIR:
+        return
+    if args.store_hugr and stage < Stage.HUGR:
+        return
+
+    sys.exit(0)
 
 
 if __name__ == "__main__":

@@ -3,6 +3,8 @@ target-version = "py311"
 
 line-length = 88
 
+exclude = ["test_files/*"]
+
 select = [
     "E", # pycodestyle Errors
     "W", # pycodestyle Warnings
@@ -59,7 +61,11 @@ select = [
     "YTT", # flake8-2020
 ]
 ignore = [
+    "ANN003", # Missing type annotation for `kwargs`
     "ANN101", # Missing type annotation for `self`
+    "TRY003", # Long messages in error constructors
+    "S101",   # Use of `assert` detected
+    "PGH003", # Blanket `type: ignore`
 ]
 
 [per-file-ignores]
