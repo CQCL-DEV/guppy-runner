@@ -11,13 +11,19 @@ The execution is composed of three steps:
 import logging
 import sys
 from argparse import ArgumentParser, Namespace
+from asyncio import Runner
 from pathlib import Path
 
-from guppy_runner.guppy_compiler import GuppyCompiler, GuppyCompilerError
-from guppy_runner.hugr_compiler import HugrCompiler, HugrCompilerError
-from guppy_runner.mlir_compiler import MLIRCompiler, MLIRCompilerError
-from guppy_runner.runner import RunnerError, run_artifact
-from guppy_runner.workflow import EncodingMode, Stage, StageData
+from guppy_runner.guppy_compiler import GuppyCompiler
+from guppy_runner.hugr_compiler import HugrCompiler
+from guppy_runner.mlir_compiler import MLIRCompiler
+from guppy_runner.workflow import (
+    EncodingMode,
+    ProcessorError,
+    Stage,
+    StageData,
+    StageProcessor,
+)
 
 LOGGER = logging.getLogger(__name__)
 
@@ -182,38 +188,45 @@ def main() -> None:
 
     # Process the program, stage by stage.
     if stage_data.stage == Stage.GUPPY:
-        try:
-            stage_data = GuppyCompiler().run(stage_data, hugr_out=args.store_hugr)
-        except GuppyCompilerError as err:
-            exit_with_error(str(err))
+        stage_data = try_run_or_exit(
+            GuppyCompiler(),
+            stage_data,
+            hugr_out=args.store_hugr,
+        )
     exit_if_done(stage_data.stage, args)
 
     if stage_data.stage == Stage.HUGR:
-        try:
-            stage_data = HugrCompiler().run(stage_data, mlir_out=args.store_mlir)
-        except HugrCompilerError as err:
-            exit_with_error(str(err))
+        stage_data = try_run_or_exit(
+            HugrCompiler(),
+            stage_data,
+            mlir_out=args.store_mlir,
+        )
     exit_if_done(stage_data.stage, args)
 
     if stage_data.stage == Stage.MLIR:
-        try:
-            stage_data = MLIRCompiler().run(stage_data, llvm_out=args.store_llvm)
-        except MLIRCompilerError as err:
-            exit_with_error(str(err))
+        stage_data = try_run_or_exit(
+            MLIRCompiler(),
+            stage_data,
+            llvm_out=args.store_llvm,
+        )
     exit_if_done(stage_data.stage, args)
 
     assert stage_data.stage == Stage.LLVM
-    try:
-        run_artifact(stage_data)
-    except RunnerError as err:
-        exit_with_error(str(err))
+    stage_data = try_run_or_exit(
+        Runner(),
+        stage_data,
+    )
     exit_if_done(stage_data.stage, args)
 
 
-def exit_with_error(msg: str) -> None:
+def try_run_or_exit(compiler: StageProcessor, data: StageData, **kwargs) -> StageData:
     """Print an error message and exit with an error code."""
-    print(f"Error: {msg}", file=sys.stderr)
-    sys.exit(1)
+    try:
+        data = compiler.run(data, **kwargs)
+    except ProcessorError as err:
+        print(f"Error: {err}", file=sys.stderr)
+        sys.exit(1)
+    return data
 
 
 def exit_if_done(stage: Stage, args: Namespace) -> None:

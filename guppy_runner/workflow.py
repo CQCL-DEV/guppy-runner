@@ -78,3 +78,19 @@ class StageProcessor(ABC):
     @abstractmethod
     def run(self, data: StageData, **kwargs) -> StageData:
         """Transform the input into the following stage."""
+
+    def _check_stage(self, data: StageData) -> None:
+        if data.stage != self.INPUT_STAGE:
+            raise InvalidStageError(data.stage, self.INPUT_STAGE)
+
+
+class ProcessorError(Exception):
+    """Base class for processor errors."""
+
+
+class InvalidStageError(ProcessorError):
+    """Invalid input data."""
+
+    def __init__(self, stage: Stage, expected: Stage) -> None:
+        """Initialize the error."""
+        super().__init__(f"Expected {expected} artifact, got {stage}.")

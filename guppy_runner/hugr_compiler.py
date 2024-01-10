@@ -3,7 +3,13 @@
 
 from pathlib import Path
 
-from guppy_runner.workflow import EncodingMode, Stage, StageData, StageProcessor
+from guppy_runner.workflow import (
+    EncodingMode,
+    ProcessorError,
+    Stage,
+    StageData,
+    StageProcessor,
+)
 
 
 def hugr_to_mlir(hugr: Path, mlir_out: Path | None) -> Path:
@@ -34,14 +40,11 @@ class HugrCompiler(StageProcessor):
     def run(self, data: StageData, *, mlir_out: Path | None, **kwargs) -> StageData:
         """Transform the input into the following stage."""
         assert not kwargs
-
-        if data.stage != self.INPUT_STAGE:
-            err = f"Invalid input stage {data.stage}."
-            raise ValueError(err)
+        self._check_stage(data)
 
         _ = mlir_out
         raise NotImplementedError
 
 
-class HugrCompilerError(Exception):
+class HugrCompilerError(ProcessorError):
     """Base class for Hugr compiler errors."""

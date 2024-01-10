@@ -7,7 +7,13 @@ from tempfile import NamedTemporaryFile
 
 from guppy.module import GuppyModule  # type: ignore
 
-from guppy_runner.workflow import EncodingMode, Stage, StageData, StageProcessor
+from guppy_runner.workflow import (
+    EncodingMode,
+    ProcessorError,
+    Stage,
+    StageData,
+    StageProcessor,
+)
 
 
 def guppy_to_hugr(guppy: Path, hugr_out: Path | None) -> Path:
@@ -32,10 +38,7 @@ class GuppyCompiler(StageProcessor):
     def run(self, data: StageData, *, hugr_out: Path | None, **kwargs) -> StageData:
         """Transform the input into the following stage."""
         assert not kwargs
-
-        if data.stage != self.INPUT_STAGE:
-            err = f"Invalid input stage {data.stage}."
-            raise ValueError(err)
+        self._check_stage(data)
 
         if hugr_out is None:
             out_encoding = EncodingMode.BITCODE
@@ -84,7 +87,7 @@ class GuppyCompiler(StageProcessor):
         return py_module.main
 
 
-class GuppyCompilerError(Exception):
+class GuppyCompilerError(ProcessorError):
     """Base class for Guppy compiler errors."""
 
 
