@@ -15,7 +15,7 @@ just run --help
 Convert a `guppy` program to a `hugr` artifact:
 
 ```bash
-just run -i test_files/even_odd.py --store_hugr hugr.json --no-run
+just run test_files/even_odd.py --store_hugr hugr.json --no-run
 ```
 
 Note that actually running the program is a work in progress.

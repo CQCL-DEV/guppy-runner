@@ -25,21 +25,19 @@ LOGGER = logging.getLogger(__name__)
 def parse_args() -> Namespace:
     """Returns a parser for the command line arguments."""
     parser = ArgumentParser(
-        description="Compile a Guppy program into a runnable artifact.",
+        description="Execute a Guppy program using the qir-runner backend.",
     )
 
     # Input options
 
     input_args = parser.add_argument_group("Input options")
     input_args.add_argument(
-        "-i",
-        "--input",
+        dest="input",
         type=Path,
         metavar="INPUT",
         help="Input program.\n"
-        "By default, this expects a Guppy program (.py)"
-        "which defines a `main` GuppyModule."
-        "If not given, the input is read from stdin.",
+        "Unless otherwise specified, this expects a Guppy program (.py) "
+        "which defines a `main` GuppyModule.",
     )
     input_mode = input_args.add_mutually_exclusive_group()
     input_mode.add_argument(
@@ -78,7 +76,7 @@ def parse_args() -> Namespace:
 
     # Intermediary output options
 
-    artifacts = parser.add_argument_group("Intermediary artifact outputs.")
+    artifacts = parser.add_argument_group("Intermediary artifact outputs")
     artifacts.add_argument(
         "--store-hugr",
         type=Path,
