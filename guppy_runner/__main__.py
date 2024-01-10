@@ -14,9 +14,9 @@ from argparse import ArgumentParser, Namespace
 from pathlib import Path
 
 from guppy_runner.guppy_compiler import GuppyCompiler, GuppyCompilerError
-from guppy_runner.hugr_compiler import HugrCompiler
-from guppy_runner.mlir_compiler import MLIRCompiler
-from guppy_runner.runner import run_artifact
+from guppy_runner.hugr_compiler import HugrCompiler, HugrCompilerError
+from guppy_runner.mlir_compiler import MLIRCompiler, MLIRCompilerError
+from guppy_runner.runner import RunnerError, run_artifact
 from guppy_runner.workflow import EncodingMode, Stage, StageData
 
 LOGGER = logging.getLogger(__name__)
@@ -44,7 +44,6 @@ def parse_args() -> Namespace:
     input_mode = input_args.add_mutually_exclusive_group()
     input_mode.add_argument(
         "--hugr",
-        type=bool,
         action="store_true",
         help="Read the input as an encoded Hugr.\n"
         "The input file extension determines whether the file is encoded in msgpack or "
@@ -52,13 +51,11 @@ def parse_args() -> Namespace:
     )
     input_mode.add_argument(
         "--mlir",
-        type=bool,
         action="store_true",
         help="Read the input as an mlir file.",
     )
     input_mode.add_argument(
         "--llvm",
-        type=bool,
         action="store_true",
         help="Read the input as an LLVMIR file.",
     )
@@ -66,7 +63,6 @@ def parse_args() -> Namespace:
     input_encoding = input_args.add_mutually_exclusive_group()
     input_encoding.add_argument(
         "--bitcode",
-        type=bool,
         action="store_true",
         help="Parse the input in binary mode. "
         "By default, the encoding mode is detected from the file extension "
@@ -74,7 +70,6 @@ def parse_args() -> Namespace:
     )
     input_encoding.add_argument(
         "--textual",
-        type=bool,
         action="store_true",
         help="Parse the input in human-readable textual mode. "
         "By default, the encoding mode is detected from the file extension "
@@ -120,7 +115,6 @@ def parse_args() -> Namespace:
     )
     runnable.add_argument(
         "--no-run",
-        type=bool,
         action="store_true",
         help="Do not run the compiled artifact. "
         "`guppy-runner` will produce any required intermediary files, "
@@ -199,21 +193,21 @@ def main() -> None:
     if stage_data.stage == Stage.HUGR:
         try:
             stage_data = HugrCompiler().run(stage_data, mlir_out=args.store_mlir)
-        except Exception as err:  # noqa: BLE001
+        except HugrCompilerError as err:  # noqa: BLE001
             exit_with_error(str(err))
     exit_if_done(stage_data.stage, args)
 
     if stage_data.stage == Stage.MLIR:
         try:
             stage_data = MLIRCompiler().run(stage_data, llvm_out=args.store_llvm)
-        except Exception as err:  # noqa: BLE001
+        except MLIRCompilerError as err:  # noqa: BLE001
             exit_with_error(str(err))
     exit_if_done(stage_data.stage, args)
 
     assert stage_data.stage == Stage.LLVM
     try:
         run_artifact(stage_data)
-    except Exception as err:  # noqa: BLE001
+    except RunnerError as err:  # noqa: BLE001
         exit_with_error(str(err))
     exit_if_done(stage_data.stage, args)
 

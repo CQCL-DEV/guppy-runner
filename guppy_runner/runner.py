@@ -8,3 +8,7 @@ def run_artifact(artifact: StageData) -> None:
     """Link the LLVM artifact and run it."""
     _ = artifact
     raise NotImplementedError
+
+
+class RunnerError(Exception):
+    """Base class for Hugr compiler errors."""

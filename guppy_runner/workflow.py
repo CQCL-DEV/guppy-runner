@@ -24,6 +24,18 @@ class Stage(Enum):
         """Compare the stages."""
         return self.value < other.value
 
+    def __le__(self, other: Stage) -> bool:
+        """Compare the stages."""
+        return self.value <= other.value
+
+    def __gt__(self, other: Stage) -> bool:
+        """Compare the stages."""
+        return self.value > other.value
+
+    def __ge__(self, other: Stage) -> bool:
+        """Compare the stages."""
+        return self.value >= other.value
+
 
 class EncodingMode(Enum):
     """The encoding format for a compiled object.

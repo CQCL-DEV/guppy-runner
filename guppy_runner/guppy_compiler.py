@@ -47,12 +47,13 @@ class GuppyCompiler(StageProcessor):
         module = self._load_module(data.file_path)
         hugr = module.compile()
         if out_encoding == EncodingMode.TEXTUAL:
-            serial_hugr = hugr.to_json()
+            serial_hugr = hugr.serialize_json()
         else:
             serial_hugr = hugr.serialize()
 
         if hugr_out:
-            with hugr_out.open(mode="wb") as hugr_file:
+            mode = "w" if out_encoding == EncodingMode.TEXTUAL else "wb"
+            with hugr_out.open(mode=mode) as hugr_file:
                 hugr_file.write(serial_hugr)
         else:
             with NamedTemporaryFile(

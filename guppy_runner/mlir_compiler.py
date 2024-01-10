@@ -40,3 +40,7 @@ class MLIRCompiler(StageProcessor):
 
         _ = llvm_out
         raise NotImplementedError
+
+
+class MLIRCompilerError(Exception):
+    """Base class for Hugr compiler errors."""
