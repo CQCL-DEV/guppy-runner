@@ -15,7 +15,25 @@ just run --help
 Convert a `guppy` program to a `hugr` artifact:
 
 ```bash
-just run test_files/even_odd.py --store_hugr hugr.json --no-run
+just run test_files/even_odd.py --store-hugr hugr.json --no-run
+```
+
+This works similarly for storing the `mlir` and `llvm` artifacts:
+
+```bash
+just run test_files/even_odd.py --store-hugr hugr.msgpack --store-mlir program.mlir --store-llvm program.ll --no-run
+```
+
+The intermediary artifacts can also be used as inputs:
+
+```bash
+just run program.mlir --mlir --store-llvm program.ll --no-run
+```
+
+The input is read from stdin if no file is specified:
+
+```bash
+cat program.mlir | just run --mlir --store-llvm program.ll --no-run
 ```
 
 Note that actually running the program is a work in progress.
