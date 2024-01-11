@@ -19,12 +19,47 @@ from guppy_runner.workflow import (
 
 __all__ = [
     "run_guppy",
+    "run_guppy_str",
     "run_guppy_from_stage",
 ]
 
 
 def run_guppy(
-    guppy_program: str | Path,
+    guppy_path: Path,
+    *,
+    hugr_out: Path | None = None,
+    mlir_out: Path | None = None,
+    llvm_out: Path | None = None,
+    no_run: bool = False,
+) -> bool:
+    """Compile and run a Guppy program.
+
+    :param guppy_path: The Guppy program path to run.
+    :param hugr_out: Optional. If provided, write the compiled Hugr to this file.
+        The file extension determines the encoding mode (json or msgpack).
+    :param mlir_out: Optional. If provided, write the compiled MLIR to this file.
+    :param llvm_out: Optional. If provided, write the compiled LLVMIR to this file.
+    :param no_run: Optional. If True, do not run the compiled artifact.
+        The compilation will terminate after producing the required intermediary files.
+    :return: Whether the program ran successfully.
+    """
+    stage_data = StageData.from_path(
+        Stage.GUPPY,
+        guppy_path,
+        EncodingMode.TEXTUAL,
+    )
+
+    return run_guppy_from_stage(
+        stage_data,
+        hugr_out=hugr_out,
+        mlir_out=mlir_out,
+        llvm_out=llvm_out,
+        no_run=no_run,
+    )
+
+
+def run_guppy_str(
+    guppy_program: str,
     *,
     hugr_out: Path | None = None,
     mlir_out: Path | None = None,
@@ -34,7 +69,6 @@ def run_guppy(
     """Compile and run a Guppy program.
 
     :param guppy_program: The Guppy program to run.
-        If a Path is given, the file is read.
     :param hugr_out: Optional. If provided, write the compiled Hugr to this file.
         The file extension determines the encoding mode (json or msgpack).
     :param mlir_out: Optional. If provided, write the compiled MLIR to this file.
@@ -43,18 +77,11 @@ def run_guppy(
         The compilation will terminate after producing the required intermediary files.
     :return: Whether the program ran successfully.
     """
-    if isinstance(guppy_program, Path):
-        stage_data = StageData.from_path(
-            Stage.GUPPY,
-            guppy_program,
-            EncodingMode.TEXTUAL,
-        )
-    else:
-        stage_data = StageData(
-            Stage.GUPPY,
-            guppy_program,
-            EncodingMode.TEXTUAL,
-        )
+    stage_data = StageData(
+        Stage.GUPPY,
+        guppy_program,
+        EncodingMode.TEXTUAL,
+    )
 
     return run_guppy_from_stage(
         stage_data,

@@ -38,6 +38,13 @@ cat program.mlir | just run --mlir --store-llvm program.ll --no-run
 
 Note that actually running the program is a work in progress.
 
+The runner can also be used as a library,
+```python
+from guppy_runner import run_guppy
+
+run_guppy("guppy.py", hugr_out="hugr.json", no_run=True)
+```
+
 ## License
 
 This project is licensed under Apache License, Version 2.0 ([LICENSE][] or http://www.apache.org/licenses/LICENSE-2.0).
