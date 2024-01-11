@@ -12,17 +12,12 @@ import sys
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
 
-from guppy_runner.guppy_compiler import GuppyCompiler
-from guppy_runner.hugr_compiler import HugrCompiler
-from guppy_runner.mlir_compiler import MLIRCompiler
-from guppy_runner.runner import Runner
+from guppy_runner import run_guppy_from_stage
 from guppy_runner.util import LOGGER
 from guppy_runner.workflow import (
     EncodingMode,
-    ProcessorError,
     Stage,
     StageData,
-    StageProcessor,
 )
 
 
@@ -196,64 +191,16 @@ def main() -> None:
             args.input_encoding,
         )
 
-    # Process the program, stage by stage.
-    if stage_data.stage == Stage.GUPPY:
-        stage_data = try_run_or_exit(
-            GuppyCompiler(),
-            stage_data,
-            hugr_out=args.store_hugr,
-        )
-    exit_if_done(stage_data.stage, args)
-
-    if stage_data.stage == Stage.HUGR:
-        stage_data = try_run_or_exit(
-            HugrCompiler(),
-            stage_data,
-            mlir_out=args.store_mlir,
-        )
-    exit_if_done(stage_data.stage, args)
-
-    if stage_data.stage == Stage.MLIR:
-        stage_data = try_run_or_exit(
-            MLIRCompiler(),
-            stage_data,
-            llvm_out=args.store_llvm,
-        )
-    exit_if_done(stage_data.stage, args)
-
-    assert stage_data.stage == Stage.LLVM
-    stage_data = try_run_or_exit(
-        Runner(),
+    success = run_guppy_from_stage(
         stage_data,
+        hugr_out=args.store_hugr,
+        mlir_out=args.store_mlir,
+        llvm_out=args.store_llvm,
+        no_run=args.no_run,
     )
-    exit_if_done(stage_data.stage, args)
 
-
-def try_run_or_exit(compiler: StageProcessor, data: StageData, **kwargs) -> StageData:
-    """Run a compilation step, and return the new data.
-
-    If a processor error occurs, print the message and exit with a non-zero status code.
-    """
-    try:
-        data = compiler.run(data, **kwargs)
-    except ProcessorError as err:
-        LOGGER.error(err)
+    if not success:
         sys.exit(1)
-    return data
-
-
-def exit_if_done(stage: Stage, args: Namespace) -> None:
-    """Exit if `--no-run` is set, and we already produced all the required artifacts."""
-    if not args.no_run:
-        return
-    if args.store_llvm and stage < Stage.LLVM:
-        return
-    if args.store_mlir and stage < Stage.MLIR:
-        return
-    if args.store_hugr and stage < Stage.HUGR:
-        return
-
-    sys.exit(0)
 
 
 if __name__ == "__main__":

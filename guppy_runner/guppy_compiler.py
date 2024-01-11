@@ -31,7 +31,7 @@ class GuppyCompiler(StageProcessor):
         **kwargs,
     ) -> StageData:
         """Transform the input into the following stage."""
-        assert not kwargs
+        _ = kwargs
         self._check_stage(data)
 
         # Determine the output encoding.

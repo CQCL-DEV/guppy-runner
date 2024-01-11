@@ -36,7 +36,7 @@ class HugrCompiler(StageProcessor):
 
     def run(self, data: StageData, *, mlir_out: Path | None, **kwargs) -> StageData:
         """Transform the input into the following stage."""
-        assert not kwargs
+        _ = kwargs
         self._check_stage(data)
 
         # TODO: Support bitcode MLIR output

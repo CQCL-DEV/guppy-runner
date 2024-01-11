@@ -29,7 +29,7 @@ class MLIRCompiler(StageProcessor):
 
     def run(self, data: StageData, *, llvm_out: Path | None, **kwargs) -> StageData:
         """Transform the input into the following stage."""
-        assert not kwargs
+        _ = kwargs
         self._check_stage(data)
 
         # TODO: Support bitcode LLVMIR output
