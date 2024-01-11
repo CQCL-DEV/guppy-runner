@@ -1,18 +1,22 @@
 from guppy.decorator import guppy
 from guppy.module import GuppyModule
 
-main = GuppyModule("main")
+module = GuppyModule("module")
 
 
-@guppy(main)
+@guppy(module)
 def is_even(x: int) -> bool:
     if x == 0:
         return True
     return is_odd(x - 1)
 
 
-@guppy(main)
+@guppy(module)
 def is_odd(x: int) -> bool:
     if x == 0:
         return False
     return is_even(x - 1)
+
+@guppy(module)
+def main() -> bool:
+    return is_even(4) and is_odd(5)

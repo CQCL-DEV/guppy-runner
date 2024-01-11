@@ -91,25 +91,34 @@ class GuppyCompiler(StageProcessor):
         temp_file: bool = False,
     ) -> GuppyModule:
         """Load a Guppy file as a Python module, and return it."""
-        loader = importlib.machinery.SourceFileLoader("main", str(program_path))
+        loader = importlib.machinery.SourceFileLoader("module", str(program_path))
         py_module = types.ModuleType(loader.name)
         try:
             loader.exec_module(py_module)
         except FileNotFoundError as err:
             raise InvalidGuppyModulePathError(program_path) from err
-        return self._get_main(py_module, program_path if not temp_file else None)
+        return self._get_module(
+            py_module,
+            program_path if not temp_file else None,
+            module_name="module",
+        )
 
-    def _get_main(
+    def _get_module(
         self,
         py_module: types.ModuleType,
         source_path: Path | None,
+        module_name: str = "module",
     ) -> GuppyModule:
-        if "main" not in py_module.__dir__():
-            raise MissingMainError(source_path)
-        if not isinstance(py_module.main, GuppyModule):
-            raise NotAGuppyError(source_path)
+        if module_name not in py_module.__dir__():
+            raise MissingModuleError(module_name, source_path)
+        module = py_module.module
+        if not isinstance(module, GuppyModule):
+            raise NotAGuppyError(module_name, source_path)
+        # TODO: Public API to check if a guppy module contains a function
+        if "main" not in module._func_defs:  # noqa: SLF001
+            raise MissingMainError(module_name, source_path)
 
-        return py_module.main
+        return module
 
 
 class GuppyCompilerError(ProcessorError):
@@ -135,15 +144,34 @@ class InvalidGuppyModulePathError(GuppyCompilerError):
         super().__init__(f"Invalid Guppy module path '{guppy}'.")
 
 
+class MissingModuleError(GuppyCompilerError):
+    """Raised when a Guppy program cannot be loaded."""
+
+    def __init__(self, module: str, guppy: Path | None) -> None:
+        """Initialize the error."""
+        if guppy is None:
+            super().__init__(f"The Guppy program does not define a `{module}` module.")
+        else:
+            super().__init__(
+                f"The Guppy program {guppy} does not define a `{module}` module.",
+            )
+
+
 class MissingMainError(GuppyCompilerError):
     """Raised when a Guppy program cannot be loaded."""
 
-    def __init__(self, guppy: Path | None) -> None:
+    def __init__(self, module: str, guppy: Path | None) -> None:
         """Initialize the error."""
         if guppy is None:
-            super().__init__("Program does not define a main module.")
+            super().__init__(
+                f"The `{module}` module in the Guppy program does not define a main "
+                "function.",
+            )
         else:
-            super().__init__(f"Guppy program {guppy} does not define a main module.")
+            super().__init__(
+                f"The `{module}` module in Guppy program {guppy} does not "
+                "define a main function.",
+            )
 
 
 class NotAGuppyError(GuppyCompilerError):
