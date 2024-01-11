@@ -35,15 +35,18 @@ class GuppyCompiler(StageProcessor):
         self._check_stage(data)
 
         # Determine the output encoding.
-        if output_mode is None and hugr_out is None:
-            output_mode = EncodingMode.BITCODE
-        elif output_mode is None:
-            output_mode = (
-                EncodingMode.from_file(hugr_out, Stage.HUGR) or EncodingMode.BITCODE
-            )
+        if output_mode is None:
+            if hugr_out is None:
+                output_mode = EncodingMode.BITCODE
+            else:
+                output_mode = (
+                    EncodingMode.from_file(hugr_out, Stage.HUGR) or EncodingMode.BITCODE
+                )
 
         # Load the Guppy program and compile it.
         if data.data_path is None:
+            # In-memory guppy programs are always strings.
+            assert isinstance(data.data, str)
             module = self._load_guppy_string(data.data)
         elif data.encoding == EncodingMode.TEXTUAL:
             module = self._load_guppy_file(data.data_path)

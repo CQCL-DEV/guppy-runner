@@ -10,12 +10,12 @@ The execution is composed of three steps:
 
 import sys
 from argparse import ArgumentParser, Namespace
-from asyncio import Runner
 from pathlib import Path
 
 from guppy_runner.guppy_compiler import GuppyCompiler
 from guppy_runner.hugr_compiler import HugrCompiler
 from guppy_runner.mlir_compiler import MLIRCompiler
+from guppy_runner.runner import Runner
 from guppy_runner.util import LOGGER
 from guppy_runner.workflow import (
     EncodingMode,
@@ -94,7 +94,7 @@ def parse_args() -> Namespace:
         type=Path,
         metavar="MLIR.mlir",
         help="Store the intermediary MLIR object, in textual mode.",
-        # TODO: Support bitcode too.  # noqa: TD002, TD003, FIX002
+        # TODO: Support bitcode too.
         # Can we detect the encoding mode from the file extension?
     )
     artifacts.add_argument(
@@ -102,7 +102,7 @@ def parse_args() -> Namespace:
         type=Path,
         metavar="LLVM.ll",
         help="Store the intermediary LLVMIR object, in textual mode.",
-        # TODO: Support bitcode too.  # noqa: TD002, TD003, FIX002
+        # TODO: Support bitcode too.
         # Can we detect the encoding mode from the file extension?
     )
 

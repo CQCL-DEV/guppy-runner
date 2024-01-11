@@ -89,7 +89,7 @@ class StageData:
 
     @classmethod
     def from_path(
-        cls: StageData,
+        cls,
         stage: Stage,
         file_path: Path,
         encoding: EncodingMode,
@@ -102,7 +102,7 @@ class StageData:
 
     @classmethod
     def from_stdin(
-        cls: StageData,
+        cls,
         stage: Stage,
         encoding: EncodingMode,
     ) -> StageData:

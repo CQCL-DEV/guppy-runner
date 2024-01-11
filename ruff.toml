@@ -63,6 +63,7 @@ select = [
 ignore = [
     "ANN003", # Missing type annotation for `kwargs`
     "ANN101", # Missing type annotation for `self`
+    "ANN102", # Missing type annotation for `cls` in classmethod
     "TRY003", # Long messages in error constructors
     "S101",   # Use of `assert` detected
     "PGH003", # Blanket `type: ignore`
