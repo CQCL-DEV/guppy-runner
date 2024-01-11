@@ -8,6 +8,7 @@ The execution is composed of three steps:
     - Produce a runnable artifact from the LLVMIR file and the `qir-runner` runtime.
 """
 
+import logging
 import sys
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
@@ -25,6 +26,13 @@ def parse_args() -> Namespace:
     """Returns a parser for the command line arguments."""
     parser = ArgumentParser(
         description="Execute a Guppy program using the qir-runner backend.",
+    )
+
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        action="store_true",
+        help="Verbose output.",
     )
 
     # Input options
@@ -178,6 +186,9 @@ def validate_args(args: Namespace, parser: ArgumentParser) -> None:
 def main() -> None:
     """Main entry point for the console script."""
     args = parse_args()
+
+    if args.verbose:
+        logging.basicConfig(level=logging.INFO)
 
     if args.input:
         stage_data = StageData.from_path(
