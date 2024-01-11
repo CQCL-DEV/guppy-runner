@@ -1,7 +1,7 @@
 guppy-runner
 ============
 
-## Usage
+## Setup
 
 This currently requires the `guppy` repository to be cloned locally. See `pyproject.toml` for the path.
 
@@ -19,6 +19,8 @@ or set the following environment variables.
 export HUGR_MLIR_TRANSLATE='../hugr-mlir/_b/hugr-mlir/target/x86_64-unknown-linux-gnu/debug/hugr-mlir-translate'
 export HUGR_MLIR_OPT='../hugr-mlir/_b/bin/hugr-mlir-opt'
 ```
+
+## Usage
 
 Convert a `guppy` program to a `hugr` artifact:
 
