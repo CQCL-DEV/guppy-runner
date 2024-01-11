@@ -100,7 +100,7 @@ def parse_args() -> Namespace:
     artifacts.add_argument(
         "--store-llvm",
         type=Path,
-        metavar="LLVM.llvmir",
+        metavar="LLVM.ll",
         help="Store the intermediary LLVMIR object, in textual mode.",
         # TODO: Support bitcode too.  # noqa: TD002, TD003, FIX002
         # Can we detect the encoding mode from the file extension?
@@ -156,9 +156,12 @@ def get_input_encoding(args: Namespace) -> EncodingMode:
     input_encoding = None
     if args.input is not None:
         input_encoding = EncodingMode.from_file(args.input, args.input_stage)
+    else:
+        input_encoding = EncodingMode.TEXTUAL
+
     if input_encoding is None:
-        # Default to bitcode if reading from a file, textual if reading from stdin.
-        input_encoding = EncodingMode.BITCODE if args.input else EncodingMode.TEXTUAL
+        # Default to bitcode if reading from a file
+        input_encoding = EncodingMode.BITCODE
         LOGGER.info(
             "Cannot detect the encoding mode from the input file extension. "
             "Defaulting to %s.",
@@ -234,7 +237,7 @@ def try_run_or_exit(compiler: StageProcessor, data: StageData, **kwargs) -> Stag
     try:
         data = compiler.run(data, **kwargs)
     except ProcessorError as err:
-        print(f"Error: {err}", file=sys.stderr)
+        LOGGER.error(err)
         sys.exit(1)
     return data
 
