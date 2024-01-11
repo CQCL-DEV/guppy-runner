@@ -66,6 +66,9 @@ ignore = [
     "TRY003", # Long messages in error constructors
     "S101",   # Use of `assert` detected
     "PGH003", # Blanket `type: ignore`
+    "TD002",  # TODO should have an author
+    "TD003",  # TODO should link to an issue
+    "FIX002", # "Consider resolving the TODO" -.-'
 ]
 
 [per-file-ignores]

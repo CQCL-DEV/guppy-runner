@@ -16,23 +16,6 @@ from guppy_runner.workflow import (
 )
 
 
-def guppy_to_hugr(
-    guppy: str | bytes,
-    output_mode: EncodingMode = EncodingMode.TEXTUAL,
-) -> str | bytes:
-    """Compile the input Guppy program into a msgpack-encoded Hugr.
-
-    If `hugr_out` is `None`, then a temporary file is created.
-    Note that the temporary file is not deleted.
-
-    Returns the path to the msgpack file.
-    """
-    encoding = EncodingMode.from_data(guppy)
-    input_data = StageData.from_path(Stage.GUPPY, guppy, encoding)
-    output = GuppyCompiler().run(input_data, output_mode=output_mode)
-    return output.data
-
-
 class GuppyCompiler(StageProcessor):
     """A processor for compiling Guppy programs into Hugrs."""
 
@@ -74,13 +57,13 @@ class GuppyCompiler(StageProcessor):
         else:
             serial_hugr = hugr.serialize()
 
+        out_data = StageData(Stage.HUGR, serial_hugr, output_mode)
+
         # Write the Hugr if requested.
         if hugr_out:
-            mode = "w" if output_mode == EncodingMode.TEXTUAL else "wb"
-            with hugr_out.open(mode=mode) as hugr_file:
-                hugr_file.write(serial_hugr)
+            self._store_artifact(out_data, hugr_out)
 
-        return StageData(Stage.HUGR, serial_hugr, output_mode)
+        return out_data
 
     def _load_guppy_string(self, program: str) -> types.ModuleType:
         """Load a Guppy file as a Python module, and return it."""

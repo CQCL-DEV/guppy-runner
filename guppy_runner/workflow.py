@@ -150,6 +150,11 @@ class StageProcessor(ABC):
         if data.stage != self.INPUT_STAGE:
             raise InvalidStageError(data.stage, self.INPUT_STAGE)
 
+    def _store_artifact(self, data: StageData, path: Path) -> None:
+        mode = "w" if data.encoding == EncodingMode.TEXTUAL else "wb"
+        with path.open(mode=mode) as file:
+            file.write(data.data)
+
 
 class ProcessorError(Exception):
     """Base class for processor errors."""

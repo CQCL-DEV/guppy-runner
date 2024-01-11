@@ -1,8 +1,11 @@
 """Methods for compiling HUGR-encoded guppy programs into MLIR objects."""
 
 
+import subprocess
+import tempfile
 from pathlib import Path
 
+from guppy_runner.util import LOGGER
 from guppy_runner.workflow import (
     EncodingMode,
     ProcessorError,
@@ -11,24 +14,17 @@ from guppy_runner.workflow import (
     StageProcessor,
 )
 
-
-def hugr_to_mlir(hugr: Path, mlir_out: Path | None) -> Path:
-    """Compile the input Hugr into an MLIR object.
-
-    ## Parameters
-    hugr: Path
-        The path to the input Hugr msgpack or json encoded file.
-        The file extension determines the encoding mode.
-    mlir_out: Path | None
-        The path to the output file.
-
-    ## Returns
-    Returns the path to the output file.
-    """
-    encoding = EncodingMode.from_file(hugr, Stage.HUGR) or EncodingMode.TEXTUAL
-    input_data = StageData(Stage.HUGR, hugr, encoding)
-    output = HugrCompiler().run(input_data, mlir_out=mlir_out)
-    return output.file_path
+# TODO: This should be configurable.
+HUGR_MLIR_TRANSLATE_PATH = (
+    Path(__file__).parent.parent.parent
+    / "hugr-mlir"
+    / "_b"
+    / "hugr-mlir"
+    / "target"
+    / "x86_64-unknown-linux-gnu"
+    / "debug"
+    / "hugr-mlir-translate"
+)
 
 
 class HugrCompiler(StageProcessor):
@@ -42,13 +38,95 @@ class HugrCompiler(StageProcessor):
         assert not kwargs
         self._check_stage(data)
 
-        _ = mlir_out
-        raise NotImplementedError
+        # TODO: Support bitcode MLIR output
+        output_mode = EncodingMode.TEXTUAL
 
-    def _exec_translate(self, input_file: Path, output_file: Path) -> None:
+        # Compile the Hugr.
+        if data.data_path is None:
+            mlir = self._compile_hugr_data(data.data, data.encoding, output_mode)
+        else:
+            mlir = self._compile_hugr_file(data.data_path, data.encoding, output_mode)
+
+        out_data = StageData(Stage.MLIR, mlir, output_mode)
+
+        # Write the mlir file if requested.
+        if mlir_out:
+            self._store_artifact(out_data, mlir_out)
+
+        return out_data
+
+    def _compile_hugr_data(
+        self,
+        hugr: str | bytes,
+        input_encoding: EncodingMode,
+        output_encoding: EncodingMode,
+    ) -> str | bytes:
+        """Compile a serialized Hugr into MLIR."""
+        # hugr-mlir-translate requires an input file.
+        if input_encoding == EncodingMode.TEXTUAL:
+            with tempfile.NamedTemporaryFile(
+                mode="w",
+                suffix=".json",
+                delete=False,
+            ) as temp_file:
+                temp_file.write(hugr)
+                hugr_path = Path(temp_file.name)
+        else:
+            with tempfile.NamedTemporaryFile(
+                mode="wb",
+                suffix=".msgpack",
+                delete=False,
+            ) as temp_file:
+                temp_file.write(hugr)
+                hugr_path = Path(temp_file.name)
+        mlir = self._exec_translate(hugr_path, input_encoding, output_encoding)
+        hugr_path.unlink()
+        return mlir
+
+    def _compile_hugr_file(
+        self,
+        path: Path,
+        input_encoding: EncodingMode,
+        output_encoding: EncodingMode,
+    ) -> str | bytes:
+        """Compile a Hugr file into MLIR."""
+        return self._exec_translate(path, input_encoding, output_encoding)
+
+    def _exec_translate(
+        self,
+        input_path: Path,
+        input_encoding: EncodingMode,
+        output_encoding: EncodingMode,
+    ) -> str | bytes:
         """Execute the `mlir-translate` command."""
-        raise NotImplementedError
+        # The input encoding must be the same as the output encoding.
+        input_mode_flag = (
+            "--hugr-json-to-mlir"
+            if input_encoding == EncodingMode.TEXTUAL
+            else "--hugr-rmp-to-mlir"
+        )
+        output_as_text = output_encoding == EncodingMode.TEXTUAL
+        try:
+            cmd = [HUGR_MLIR_TRANSLATE_PATH, input_mode_flag, input_path]
+            LOGGER.info("Executing command:", *cmd)
+            completed = subprocess.run(
+                cmd,  # noqa: S603
+                capture_output=True,
+                check=True,
+                text=output_as_text,
+            )
+        except FileNotFoundError as err:
+            raise HugrMlirTranslateNotFoundError(HUGR_MLIR_TRANSLATE_PATH) from err
+        return completed.stdout
 
 
 class HugrCompilerError(ProcessorError):
     """Base class for Hugr compiler errors."""
+
+
+class HugrMlirTranslateNotFoundError(HugrCompilerError):
+    """Raised when the translation program cannot be found."""
+
+    def __init__(self, path: Path) -> None:
+        """Initialize the error."""
+        super().__init__(f"Could not find 'hugr-mlir-translate' binary in '{path}'.")

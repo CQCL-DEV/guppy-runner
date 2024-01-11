@@ -8,7 +8,6 @@ The execution is composed of three steps:
     - Produce a runnable artifact from the LLVMIR file and the `qir-runner` runtime.
 """
 
-import logging
 import sys
 from argparse import ArgumentParser, Namespace
 from asyncio import Runner
@@ -17,6 +16,7 @@ from pathlib import Path
 from guppy_runner.guppy_compiler import GuppyCompiler
 from guppy_runner.hugr_compiler import HugrCompiler
 from guppy_runner.mlir_compiler import MLIRCompiler
+from guppy_runner.util import LOGGER
 from guppy_runner.workflow import (
     EncodingMode,
     ProcessorError,
@@ -24,8 +24,6 @@ from guppy_runner.workflow import (
     StageData,
     StageProcessor,
 )
-
-LOGGER = logging.getLogger(__name__)
 
 
 def parse_args() -> Namespace:
