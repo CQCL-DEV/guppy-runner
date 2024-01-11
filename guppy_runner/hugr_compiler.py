@@ -45,6 +45,10 @@ class HugrCompiler(StageProcessor):
         _ = mlir_out
         raise NotImplementedError
 
+    def _exec_translate(self, input_file: Path, output_file: Path) -> None:
+        """Execute the `mlir-translate` command."""
+        raise NotImplementedError
+
 
 class HugrCompilerError(ProcessorError):
     """Base class for Hugr compiler errors."""

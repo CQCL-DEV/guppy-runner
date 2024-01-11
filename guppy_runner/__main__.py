@@ -40,6 +40,7 @@ def parse_args() -> Namespace:
     input_args.add_argument(
         dest="input",
         type=Path,
+        nargs="?",
         metavar="INPUT",
         help="Input program.\n"
         "Unless otherwise specified, this expects a Guppy program (.py) "
@@ -158,11 +159,13 @@ def get_input_encoding(args: Namespace) -> EncodingMode:
     if args.input is not None:
         input_encoding = EncodingMode.from_file(args.input, args.input_stage)
     if input_encoding is None:
+        # Default to bitcode if reading from a file, textual if reading from stdin.
+        input_encoding = EncodingMode.BITCODE if args.input else EncodingMode.TEXTUAL
         LOGGER.info(
             "Cannot detect the encoding mode from the input file extension. "
-            "Defaulting to bitcode.",
+            "Defaulting to %s.",
+            input_encoding,
         )
-        input_encoding = EncodingMode.BITCODE
     return input_encoding
 
 
@@ -180,11 +183,17 @@ def main() -> None:
     """Main entry point for the console script."""
     args = parse_args()
 
-    stage_data = StageData(
-        stage=args.input_stage,
-        file_path=args.input,
-        encoding=args.input_encoding,
-    )
+    if args.input:
+        stage_data = StageData.from_path(
+            args.input_stage,
+            args.input,
+            args.input_encoding,
+        )
+    else:
+        stage_data = StageData.from_stdin(
+            args.input_stage,
+            args.input_encoding,
+        )
 
     # Process the program, stage by stage.
     if stage_data.stage == Stage.GUPPY:
@@ -220,7 +229,10 @@ def main() -> None:
 
 
 def try_run_or_exit(compiler: StageProcessor, data: StageData, **kwargs) -> StageData:
-    """Print an error message and exit with an error code."""
+    """Run a compilation step, and return the new data.
+
+    If a processor error occurs, print the message and exit with a non-zero status code.
+    """
     try:
         data = compiler.run(data, **kwargs)
     except ProcessorError as err:

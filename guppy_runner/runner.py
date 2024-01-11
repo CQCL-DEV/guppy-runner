@@ -23,7 +23,7 @@ class Runner(StageProcessor):
     """A processor for running an LLVMIR artifact."""
 
     INPUT_STAGE: Stage = Stage.LLVM
-    OUTPUT_STAGE: Stage = Stage.LLVM
+    OUTPUT_STAGE: Stage = Stage.RUNNABLE
 
     def run(self, data: StageData, **kwargs) -> StageData:
         """Run the LLVMIR artifact."""

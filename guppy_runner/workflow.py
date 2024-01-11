@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
+import sys
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
 from enum import Enum
 from typing import TYPE_CHECKING
 
@@ -59,14 +59,81 @@ class EncodingMode(Enum):
             return EncodingMode.TEXTUAL
         return None
 
+    @staticmethod
+    def from_data(data: str | bytes) -> EncodingMode:
+        """Try to derive the encoding mode from the type of the data."""
+        if isinstance(data, str):
+            return EncodingMode.TEXTUAL
+        return EncodingMode.BITCODE
 
-@dataclass(frozen=True)
+
 class StageData:
     """The data describing a compilation artifact in a given stage."""
 
     stage: Stage
-    file_path: Path
     encoding: EncodingMode
+    _data: str | bytes | None
+    data_path: Path | None
+
+    def __init__(
+        self,
+        stage: Stage,
+        data: str | bytes,
+        encoding: EncodingMode,
+    ) -> None:
+        """Initialize the data."""
+        self.stage = stage
+        self._data = data
+        self.encoding = encoding
+        self.data_path = None
+
+    @classmethod
+    def from_path(
+        cls: StageData,
+        stage: Stage,
+        file_path: Path,
+        encoding: EncodingMode,
+    ) -> StageData:
+        """Initialize the data from a file path."""
+        c = cls(stage, "", encoding)
+        c.data_path = file_path
+        c._data = None  # noqa: SLF001
+        return c
+
+    @classmethod
+    def from_stdin(
+        cls: StageData,
+        stage: Stage,
+        encoding: EncodingMode,
+    ) -> StageData:
+        """Initialize the data, reading from stdin."""
+        assert encoding == EncodingMode.TEXTUAL
+        data = sys.stdin.read()
+        return cls(stage, data, encoding)
+
+    @property
+    def data(self) -> str | bytes:
+        """The data.
+
+        If the data was specified as a path, load it.
+        """
+        if self._data is None:
+            self.load_data()
+        assert self._data is not None
+        return self._data
+
+    def load_data(self) -> None:
+        """If the data is a path, load it."""
+        if self._data is not None:
+            # Already loaded.
+            return
+        if self.data_path is None:
+            msg = "No data path to load."
+            raise ValueError(msg)
+        if self.encoding == EncodingMode.TEXTUAL:
+            self._data = self.data_path.read_text()
+        else:
+            self._data = self.data_path.read_bytes()
 
 
 class StageProcessor(ABC):
