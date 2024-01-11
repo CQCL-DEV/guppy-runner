@@ -1,6 +1,7 @@
 """Methods for producing runnable artifacts from MLIR objects."""
 
 
+import os
 import subprocess
 import tempfile
 from pathlib import Path
@@ -15,10 +16,8 @@ from guppy_runner.workflow import (
     StageProcessor,
 )
 
-# TODO: This should be configurable.
-HUGR_MLIR_OPT_PATH = (
-    Path(__file__).parent.parent.parent / "hugr-mlir" / "_b" / "bin" / "hugr-mlir-opt"
-)
+HUGR_MLIR_OPT = "hugr-mlir-opt"
+HUGR_MLIR_OPT_ENV = "HUGR_MLIR_OPT"
 
 
 class MLIRCompiler(StageProcessor):
@@ -90,7 +89,7 @@ class MLIRCompiler(StageProcessor):
         ), "Bitcode MLIR is not supported yet"
         output_as_text = output_encoding == EncodingMode.TEXTUAL
 
-        cmd = [HUGR_MLIR_OPT_PATH, input_path, "--lower-hugr"]
+        cmd = [self._get_compiler(), input_path, "--lower-hugr"]
         cmd_str = " ".join(str(c) for c in cmd)
         msg = f"Executing command: '{cmd_str}'"
         LOGGER.info(msg)
@@ -102,10 +101,20 @@ class MLIRCompiler(StageProcessor):
                 text=output_as_text,
             )
         except FileNotFoundError as err:
-            raise MlirLlvmTranslateNotFoundError(HUGR_MLIR_OPT_PATH) from err
+            raise MlirLlvmTranslateNotFoundError(self._get_compiler()) from err
         except CalledProcessError as err:
             raise MlirOptError(err) from err
         return completed.stdout
+
+    def _get_compiler(self) -> Path:
+        """Returns the path to the `hugr-mlir-opt` binary.
+
+        Looks for it in your PATH by default, unless a "HUGR_MLIR_OPT" env
+        variable is set.
+        """
+        if HUGR_MLIR_OPT_ENV in os.environ:
+            return Path(os.environ[HUGR_MLIR_OPT_ENV])
+        return Path(HUGR_MLIR_OPT)
 
 
 class MlirCompilerError(ProcessorError):
@@ -117,7 +126,11 @@ class MlirLlvmTranslateNotFoundError(MlirCompilerError):
 
     def __init__(self, path: Path) -> None:
         """Initialize the error."""
-        super().__init__(f"Could not find 'hugr-mlir-opt' binary in '{path}'.")
+        super().__init__(
+            f"Could not find 'hugr-mlir-opt' binary in '{path}'. "
+            f"You can override this path with the {HUGR_MLIR_OPT_ENV} env "
+            "variable.",
+        )
 
 
 class MlirOptError(MlirCompilerError):

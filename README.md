@@ -12,6 +12,14 @@ just install
 just run --help
 ```
 
+You must have `hugr-mlir-translate` and `hugr-mlir-opt` available in your `PATH`,
+or set the following environment variables.
+
+```bash
+export HUGR_MLIR_TRANSLATE='../hugr-mlir/_b/hugr-mlir/target/x86_64-unknown-linux-gnu/debug/hugr-mlir-translate'
+export HUGR_MLIR_OPT='../hugr-mlir/_b/bin/hugr-mlir-opt'
+```
+
 Convert a `guppy` program to a `hugr` artifact:
 
 ```bash

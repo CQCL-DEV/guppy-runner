@@ -121,7 +121,7 @@ def run_guppy_from_stage(
 
     for compiler in compilers:
         if _are_we_done(
-            compiler.OUTPUT_STAGE,
+            program.stage,
             hugr_out=hugr_out,
             mlir_out=mlir_out,
             llvm_out=llvm_out,
@@ -132,6 +132,11 @@ def run_guppy_from_stage(
         # Skip stages that are not required.
         # (e.g. if we give an intermediary artifact as input)
         if program.stage == compiler.INPUT_STAGE:
+            LOGGER.info(
+                "Compiling %s -> %s",
+                compiler.INPUT_STAGE,
+                compiler.OUTPUT_STAGE,
+            )
             try:
                 program = compiler.run(
                     program,

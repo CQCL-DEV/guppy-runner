@@ -1,6 +1,7 @@
 """Methods for compiling HUGR-encoded guppy programs into MLIR objects."""
 
 
+import os
 import subprocess
 import tempfile
 from pathlib import Path
@@ -15,17 +16,8 @@ from guppy_runner.workflow import (
     StageProcessor,
 )
 
-# TODO: This should be configurable.
-HUGR_MLIR_TRANSLATE_PATH = (
-    Path(__file__).parent.parent.parent
-    / "hugr-mlir"
-    / "_b"
-    / "hugr-mlir"
-    / "target"
-    / "x86_64-unknown-linux-gnu"
-    / "debug"
-    / "hugr-mlir-translate"
-)
+HUGR_MLIR_TRANSLATE = "hugr-mlir-translate"
+HUGR_MLIR_TRANSLATE_ENV = "HUGR_MLIR_TRANSLATE"
 
 
 class HugrCompiler(StageProcessor):
@@ -99,7 +91,7 @@ class HugrCompiler(StageProcessor):
             else "--hugr-rmp-to-mlir"
         )
         output_as_text = output_encoding == EncodingMode.TEXTUAL
-        cmd = [HUGR_MLIR_TRANSLATE_PATH, input_mode_flag, input_path]
+        cmd = [self._get_compiler(), input_mode_flag, input_path]
         cmd_str = " ".join(str(c) for c in cmd)
         msg = f"Executing command: '{cmd_str}'"
         LOGGER.info(msg)
@@ -112,11 +104,21 @@ class HugrCompiler(StageProcessor):
                 text=output_as_text,
             )
         except FileNotFoundError as err:
-            raise HugrMlirTranslateNotFoundError(HUGR_MLIR_TRANSLATE_PATH) from err
+            raise HugrMlirTranslateNotFoundError(self._get_compiler()) from err
         except CalledProcessError as err:
             raise MlirTranslateError(err) from err
 
         return completed.stdout
+
+    def _get_compiler(self) -> Path:
+        """Returns the path to the `hugr-mlir-translate` binary.
+
+        Looks for it in your PATH by default, unless a "HUGR_MLIR_TRANSLATE" env
+        variable is set.
+        """
+        if HUGR_MLIR_TRANSLATE_ENV in os.environ:
+            return Path(os.environ[HUGR_MLIR_TRANSLATE_ENV])
+        return Path(HUGR_MLIR_TRANSLATE)
 
 
 class HugrCompilerError(ProcessorError):
@@ -128,7 +130,11 @@ class HugrMlirTranslateNotFoundError(HugrCompilerError):
 
     def __init__(self, path: Path) -> None:
         """Initialize the error."""
-        super().__init__(f"Could not find 'hugr-mlir-translate' binary in '{path}'.")
+        super().__init__(
+            f"Could not find 'hugr-mlir-translate' binary in '{path}'. "
+            f"You can override this path with the {HUGR_MLIR_TRANSLATE_ENV} env "
+            "variable.",
+        )
 
 
 class MlirTranslateError(HugrCompilerError):
