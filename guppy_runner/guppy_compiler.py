@@ -132,8 +132,7 @@ class GuppyCompiler(StageProcessor):
 
         if not isinstance(module, GuppyModule):
             raise NotAGuppyError(module_name, source_path)
-        # TODO: Public API to check if a guppy module contains a function
-        if "main" not in module._func_defs:  # noqa: SLF001
+        if not module.contains_function("main"):
             raise MissingMainError(module_name, source_path)
 
         return module
