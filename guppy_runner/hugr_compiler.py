@@ -91,7 +91,7 @@ class HugrCompiler(StageProcessor):
             else "--hugr-rmp-to-mlir"
         )
         output_as_text = output_encoding == EncodingMode.TEXTUAL
-        cmd = [self._get_compiler(), input_mode_flag, input_path]
+        cmd = [self._get_compiler()[0], input_mode_flag, input_path]
         cmd_str = " ".join(str(c) for c in cmd)
         msg = f"Executing command: '{cmd_str}'"
         LOGGER.info(msg)
@@ -104,21 +104,24 @@ class HugrCompiler(StageProcessor):
                 text=output_as_text,
             )
         except FileNotFoundError as err:
-            raise HugrMlirTranslateNotFoundError(self._get_compiler()) from err
+            raise HugrMlirTranslateNotFoundError(*self._get_compiler()) from err
         except CalledProcessError as err:
             raise MlirTranslateError(err) from err
 
         return completed.stdout
 
-    def _get_compiler(self) -> Path:
+    def _get_compiler(self) -> (Path, bool):
         """Returns the path to the `hugr-mlir-translate` binary.
 
         Looks for it in your PATH by default, unless a "HUGR_MLIR_TRANSLATE" env
         variable is set.
+
+        The returned boolean indicates whether the path was overridden via the
+        environment variable.
         """
         if HUGR_MLIR_TRANSLATE_ENV in os.environ:
-            return Path(os.environ[HUGR_MLIR_TRANSLATE_ENV])
-        return Path(HUGR_MLIR_TRANSLATE)
+            return (Path(os.environ[HUGR_MLIR_TRANSLATE_ENV]), True)
+        return (Path(HUGR_MLIR_TRANSLATE), False)
 
 
 class HugrCompilerError(ProcessorError):
@@ -128,13 +131,19 @@ class HugrCompilerError(ProcessorError):
 class HugrMlirTranslateNotFoundError(HugrCompilerError):
     """Raised when the translation program cannot be found."""
 
-    def __init__(self, path: Path) -> None:
+    def __init__(self, path: Path, bin_from_path: bool) -> None:  # noqa: FBT001
         """Initialize the error."""
-        super().__init__(
-            f"Could not find 'hugr-mlir-translate' binary in '{path}'. "
-            f"You can override this path with the {HUGR_MLIR_TRANSLATE_ENV} env "
-            "variable.",
-        )
+        if not bin_from_path:
+            super().__init__(
+                f"Could not find 'hugr-mlir-translate' binary in your $PATH. "
+                f"You can set an explicit path with the {HUGR_MLIR_TRANSLATE_ENV} env "
+                "variable.",
+            )
+        else:
+            super().__init__(
+                f"Could not find 'hugr-mlir-translate' binary in '{path}', set via the "
+                f"{HUGR_MLIR_TRANSLATE_ENV} env variable.",
+            )
 
 
 class MlirTranslateError(HugrCompilerError):
