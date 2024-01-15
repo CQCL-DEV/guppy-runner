@@ -131,7 +131,8 @@ class GuppyCompiler(StageProcessor):
             raise NotImplementedError
 
         if not isinstance(module, GuppyModule):
-            raise NotAGuppyError(module_name, source_path)
+            assert module_name is not None
+            raise NotAGuppyError(source_path)
         if not module.contains_function("main"):
             raise MissingMainError(module_name, source_path)
 

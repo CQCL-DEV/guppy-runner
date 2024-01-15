@@ -110,7 +110,7 @@ class HugrCompiler(StageProcessor):
 
         return completed.stdout
 
-    def _get_compiler(self) -> (Path, bool):
+    def _get_compiler(self) -> tuple[Path, bool]:
         """Returns the path to the `hugr-mlir-translate` binary.
 
         Looks for it in your PATH by default, unless a "HUGR_MLIR_TRANSLATE" env
