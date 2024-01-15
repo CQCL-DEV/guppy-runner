@@ -28,6 +28,7 @@ class GuppyCompiler(StageProcessor):
         *,
         hugr_out: Path | None = None,
         output_mode: EncodingMode | None = None,
+        module_name: str | None = None,
         **kwargs,
     ) -> StageData:
         """Transform the input into the following stage."""
@@ -47,9 +48,9 @@ class GuppyCompiler(StageProcessor):
         if data.data_path is None:
             # In-memory guppy programs are always strings.
             assert isinstance(data.data, str)
-            module = self._load_guppy_string(data.data)
+            module = self._load_guppy_string(data.data, module_name=module_name)
         elif data.encoding == EncodingMode.TEXTUAL:
-            module = self._load_guppy_file(data.data_path)
+            module = self._load_guppy_file(data.data_path, module_name=module_name)
         else:
             raise BitcodeProgramError
         hugr = module.compile()
@@ -68,7 +69,11 @@ class GuppyCompiler(StageProcessor):
 
         return out_data
 
-    def _load_guppy_string(self, program: str) -> types.ModuleType:
+    def _load_guppy_string(
+        self,
+        program: str,
+        module_name: str | None = None,
+    ) -> types.ModuleType:
         """Load a Guppy file as a Python module, and return it."""
         # Guppy needs the program to have an associated source,
         # so we need to create a temporary file.
@@ -79,7 +84,11 @@ class GuppyCompiler(StageProcessor):
         ) as temp_file:
             temp_file.write(program)
             program_path = Path(temp_file.name)
-        module = self._load_guppy_file(program_path, temp_file=True)
+        module = self._load_guppy_file(
+            program_path,
+            module_name=module_name,
+            temp_file=True,
+        )
         # Delete the temporary file.
         program_path.unlink()
         return module
@@ -88,6 +97,7 @@ class GuppyCompiler(StageProcessor):
         self,
         program_path: Path,
         *,
+        module_name: str | None = None,
         temp_file: bool = False,
     ) -> GuppyModule:
         """Load a Guppy file as a Python module, and return it."""
@@ -100,18 +110,26 @@ class GuppyCompiler(StageProcessor):
         return self._get_module(
             py_module,
             program_path if not temp_file else None,
-            module_name="module",
+            module_name=module_name,
         )
 
     def _get_module(
         self,
         py_module: types.ModuleType,
         source_path: Path | None,
-        module_name: str = "module",
+        module_name: str | None = None,
     ) -> GuppyModule:
-        if module_name not in py_module.__dir__():
-            raise MissingModuleError(module_name, source_path)
-        module = py_module.module
+        # TODO: Using a default module requires fixing `set_module` first.
+        # https://github.com/CQCL-DEV/guppy/issues/101
+        module_name = module_name or "module"
+
+        if module_name:
+            if module_name not in py_module.__dir__():
+                raise MissingModuleError(module_name, source_path)
+            module = getattr(py_module, module_name)
+        else:
+            raise NotImplementedError
+
         if not isinstance(module, GuppyModule):
             raise NotAGuppyError(module_name, source_path)
         # TODO: Public API to check if a guppy module contains a function

@@ -24,13 +24,14 @@ __all__ = [
 ]
 
 
-def run_guppy(
+def run_guppy(  # noqa: PLR0913
     guppy_path: Path,
     *,
     hugr_out: Path | None = None,
     mlir_out: Path | None = None,
     llvm_out: Path | None = None,
     no_run: bool = False,
+    module_name: str | None = None,
 ) -> bool:
     """Compile and run a Guppy program.
 
@@ -41,6 +42,8 @@ def run_guppy(
     :param llvm_out: Optional. If provided, write the compiled LLVMIR to this file.
     :param no_run: Optional. If True, do not run the compiled artifact.
         The compilation will terminate after producing the required intermediary files.
+    :param module_name: Optional. The name of the module to load. By default,
+        compiles the module used by @guppy.
     :return: Whether the program ran successfully.
     """
     stage_data = StageData.from_path(
@@ -55,16 +58,18 @@ def run_guppy(
         mlir_out=mlir_out,
         llvm_out=llvm_out,
         no_run=no_run,
+        module_name=module_name,
     )
 
 
-def run_guppy_str(
+def run_guppy_str(  # noqa: PLR0913
     guppy_program: str,
     *,
     hugr_out: Path | None = None,
     mlir_out: Path | None = None,
     llvm_out: Path | None = None,
     no_run: bool = False,
+    module_name: str | None = None,
 ) -> bool:
     """Compile and run a Guppy program.
 
@@ -75,6 +80,8 @@ def run_guppy_str(
     :param llvm_out: Optional. If provided, write the compiled LLVMIR to this file.
     :param no_run: Optional. If True, do not run the compiled artifact.
         The compilation will terminate after producing the required intermediary files.
+    :param module_name: Optional. The name of the module to load. By default,
+        compiles the module used by @guppy.
     :return: Whether the program ran successfully.
     """
     stage_data = StageData(
@@ -89,27 +96,34 @@ def run_guppy_str(
         mlir_out=mlir_out,
         llvm_out=llvm_out,
         no_run=no_run,
+        module_name=module_name,
     )
 
 
-def run_guppy_from_stage(
+def run_guppy_from_stage(  # noqa: PLR0913
     program: StageData,
     *,
     hugr_out: Path | None = None,
     mlir_out: Path | None = None,
     llvm_out: Path | None = None,
     no_run: bool = False,
+    module_name: str | None = None,
 ) -> bool:
     """Compile and run a Guppy program, from a given compilation stage.
 
-    :param guppy_program: The program to run.
-        If an intermediary stage is given, start compilation from that stage.
-    :param hugr_out: Optional. If provided, write the compiled Hugr to this file.
-        The file extension determines the encoding mode (json or msgpack).
-    :param mlir_out: Optional. If provided, write the compiled MLIR to this file.
-    :param llvm_out: Optional. If provided, write the compiled LLVMIR to this file.
-    :param no_run: Optional. If True, do not run the compiled artifact.
-        The compilation will terminate after producing the required intermediary files.
+    :param guppy_program: The program to run. If an intermediary stage is given,
+        start compilation from that stage.
+    :param hugr_out: Optional. If provided, write the compiled Hugr to this
+        file. The file extension determines the encoding mode (json or msgpack).
+    :param mlir_out: Optional. If provided, write the compiled MLIR to this
+        file.
+    :param llvm_out: Optional. If provided, write the compiled LLVMIR to this
+        file.
+    :param no_run: Optional. If True, do not run the compiled artifact. The
+        compilation will terminate after producing the required intermediary
+        files.
+    :param module_name: Optional. The name of the module to load. By default,
+        compiles the module used by @guppy.
     :return: Whether the program ran successfully.
     """
     compilers = [
@@ -143,6 +157,7 @@ def run_guppy_from_stage(
                     hugr_out=hugr_out,
                     mlir_out=mlir_out,
                     llvm_out=llvm_out,
+                    module_name=module_name,
                 )
             except ProcessorError as err:
                 LOGGER.error(err)

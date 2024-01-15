@@ -34,6 +34,14 @@ def parse_args() -> Namespace:
         action="store_true",
         help="Verbose output.",
     )
+    parser.add_argument(
+        "--module",
+        metavar="MODULE_NAME",
+        type=str,
+        dest="module_name",
+        help="The name of the `GuppyModule` exported by the program. It must contain a "
+        "`main` function. If not specified, the default @guppy module is used.",
+    )
 
     # Input options
 
@@ -208,6 +216,7 @@ def main() -> None:
         mlir_out=args.store_mlir,
         llvm_out=args.store_llvm,
         no_run=args.no_run,
+        module_name=args.module_name,
     )
 
     if not success:
