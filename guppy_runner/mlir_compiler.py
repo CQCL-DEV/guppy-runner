@@ -26,13 +26,31 @@ class MLIRCompiler(StageProcessor):
     INPUT_STAGE: Stage = Stage.MLIR
     OUTPUT_STAGE: Stage = Stage.LLVM
 
-    def run(self, data: StageData, *, llvm_out: Path | None, **kwargs) -> StageData:
+    def run(
+        self,
+        data: StageData,
+        *,
+        llvm_out: Path | None,
+        output_mode: EncodingMode | None = None,
+        **kwargs,
+    ) -> StageData:
         """Transform the input into the following stage."""
         _ = kwargs
         self._check_stage(data)
 
         # TODO: Support bitcode LLVMIR output
         output_mode = EncodingMode.TEXTUAL
+
+        # Determine the output encoding.
+        if output_mode is None:
+            if llvm_out is None:
+                output_mode = EncodingMode.BITCODE
+            else:
+                # Determine the output encoding from the file extension;
+                # '.ll' for textual, '.bc' for bitcode.
+                output_mode = (
+                    EncodingMode.from_file(llvm_out, Stage.LLVM) or EncodingMode.BITCODE
+                )
 
         # Compile the MLIR.
         if data.data_path is None:
@@ -89,6 +107,9 @@ class MLIRCompiler(StageProcessor):
         ), "Bitcode MLIR is not supported yet"
         output_as_text = output_encoding == EncodingMode.TEXTUAL
         cmd = [self._get_compiler()[0], input_path, "--lower-hugr"]
+        if not output_as_text:
+            cmd += ["--emit-bytecode"]
+
         cmd_str = " ".join(str(c) for c in cmd)
         msg = f"Executing command: '{cmd_str}'"
         LOGGER.info(msg)

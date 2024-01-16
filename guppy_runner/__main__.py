@@ -112,9 +112,9 @@ def parse_args() -> Namespace:
         "--store-llvm",
         type=Path,
         metavar="LLVM.ll",
-        help="Store the intermediary LLVMIR object, in textual mode.",
-        # TODO: Support bitcode too.
-        # Can we detect the encoding mode from the file extension?
+        help="Store the intermediary LLVMIR object."
+        "The file extension determines whether the file is encoded in textual (.ll) or "
+        "bytecode mode (.bc).",
     )
 
     # Runnable artifact options

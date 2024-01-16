@@ -57,6 +57,10 @@ class EncodingMode(Enum):
             return EncodingMode.TEXTUAL
         if stage == Stage.MLIR and ext == ".mlir":
             return EncodingMode.TEXTUAL
+        if stage == Stage.LLVM and ext == ".bc":
+            return EncodingMode.BITCODE
+        if stage == Stage.LLVM and ext == ".ll":
+            return EncodingMode.TEXTUAL
         return None
 
     @staticmethod
