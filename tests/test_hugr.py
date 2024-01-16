@@ -14,9 +14,15 @@ EVEN_ODD: Path = Path("test_files/even_odd.py")
 def test_even_odd():
     with NamedTemporaryFile(suffix=".hugr") as temp_hugr, NamedTemporaryFile(
         suffix=".mlir",
-    ) as temp_mlir:
+    ) as temp_mlir, NamedTemporaryFile(
+        suffix=".mlir",
+    ) as temp_lower_mlir, NamedTemporaryFile(
+        suffix=".ll",
+    ) as temp_llvm:
         temp_hugr.close()
         temp_mlir.close()
+        temp_lower_mlir.close()
+        temp_llvm.close()
 
         # Just check that it runs.
         #
@@ -26,8 +32,8 @@ def test_even_odd():
             EVEN_ODD,
             hugr_out=Path(temp_hugr.name),
             hugr_mlir_out=Path(temp_mlir.name),
-            # TODO: llvmir generation is broken
-            # llvm_out="test_files/even_odd.ll",  # noqa: ERA001
+            lowered_mlir_out=Path(temp_lower_mlir.name),
+            llvm_out=Path(temp_llvm.name),
             no_run=True,
         )
 
@@ -39,8 +45,8 @@ def test_from_module():
     def main(x: bool) -> bool:  # noqa: FBT001
         return x
 
-    with NamedTemporaryFile(suffix=".mlir") as temp_mlir:
-        temp_mlir.close()
+    with NamedTemporaryFile(suffix=".ll") as temp_llvm:
+        temp_llvm.close()
 
         # Just check that it runs.
         #
@@ -48,8 +54,6 @@ def test_from_module():
         # so we have to assume that they are correct.
         assert run_guppy_module(
             module,
-            hugr_mlir_out=Path(temp_mlir.name),
-            # TODO: llvmir generation is broken
-            # llvm_out="test_files/even_odd.ll",  # noqa: ERA001
+            llvm_out=Path(temp_llvm.name),
             no_run=True,
         )
