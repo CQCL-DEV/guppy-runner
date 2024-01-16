@@ -27,6 +27,7 @@ class LlvmCompiler(StageCompiler):
         *,
         input_path: Path,
         input_encoding: EncodingMode,
+        output_path: Path | None,
         output_encoding: EncodingMode,
         temp_file: bool = False,
         module_name: str | None = None,
@@ -39,6 +40,8 @@ class LlvmCompiler(StageCompiler):
 
         output_as_text = output_encoding == EncodingMode.TEXTUAL
         cmd = [self._get_compiler()[0], input_path, "--filetype=obj"]
+        if output_path:
+            cmd += ["-o", output_path]
 
         cmd_str = " ".join(str(c) for c in cmd)
         msg = f"Executing command: '{cmd_str}'"
@@ -55,6 +58,8 @@ class LlvmCompiler(StageCompiler):
         except CalledProcessError as err:
             raise LlcError(err) from err
 
+        if output_path:
+            return output_path
         return completed.stdout
 
     def _get_compiler(self) -> tuple[Path, bool]:

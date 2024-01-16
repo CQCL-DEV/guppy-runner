@@ -23,12 +23,13 @@ class MLIRCompiler(StageCompiler):
         *,
         input_path: Path,
         input_encoding: EncodingMode,
+        output_path: Path | None,
         output_encoding: EncodingMode,
         temp_file: bool = False,
         module_name: str | None = None,
     ) -> str | bytes:
         """Execute `mlir-translate`."""
-        _ = input_encoding, temp_file, module_name
+        _ = input_encoding, output_path, temp_file, module_name
 
         if output_encoding == EncodingMode.BITCODE:
             raise UnsupportedEncodingError(self.OUTPUT_STAGE, output_encoding)

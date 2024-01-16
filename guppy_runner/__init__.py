@@ -9,10 +9,11 @@ from guppy.module import GuppyModule  # type: ignore
 from guppy_runner.compile import CompilerError
 from guppy_runner.compile.guppy_compiler import GuppyCompiler
 from guppy_runner.compile.hugr_compiler import HugrCompiler
+from guppy_runner.compile.linker import Linker
 from guppy_runner.compile.llvm_compiler import LlvmCompiler
 from guppy_runner.compile.mlir_compiler import MLIRCompiler
 from guppy_runner.compile.mlir_lowerer import MLIRLowerer
-from guppy_runner.compile.runner import Runner
+from guppy_runner.run import run_guppy_bin
 from guppy_runner.stage import EncodingMode, Stage, StageData
 from guppy_runner.util import LOGGER
 
@@ -30,6 +31,8 @@ def run_guppy(  # noqa: PLR0913
     hugr_mlir_out: Path | None = None,
     lowered_mlir_out: Path | None = None,
     llvm_out: Path | None = None,
+    obj_out: Path | None = None,
+    bin_out: Path | None = None,
     no_run: bool = False,
     module_name: str | None = None,
 ) -> bool:
@@ -61,6 +64,8 @@ def run_guppy(  # noqa: PLR0913
         hugr_mlir_out=hugr_mlir_out,
         lowered_mlir_out=lowered_mlir_out,
         llvm_out=llvm_out,
+        obj_out=obj_out,
+        bin_out=bin_out,
         no_run=no_run,
         module_name=module_name,
     )
@@ -73,6 +78,8 @@ def run_guppy_str(  # noqa: PLR0913
     hugr_mlir_out: Path | None = None,
     lowered_mlir_out: Path | None = None,
     llvm_out: Path | None = None,
+    obj_out: Path | None = None,
+    bin_out: Path | None = None,
     no_run: bool = False,
     module_name: str | None = None,
 ) -> bool:
@@ -86,6 +93,10 @@ def run_guppy_str(  # noqa: PLR0913
     :param lowered_mlir_out: Optional. If provided, write the llvm-dialect MLIR to this
         file.
     :param llvm_out: Optional. If provided, write the compiled LLVMIR to this file.
+    :param obj_out: Optional. If provided, write the compiled object to this
+        file.
+    :param bin_out: Optional. If provided, write the compiled binary to this
+        file.
     :param no_run: Optional. If True, do not run the compiled artifact.
         The compilation will terminate after producing the required intermediary files.
     :param module_name: Optional. The name of the module to load. By default,
@@ -104,6 +115,8 @@ def run_guppy_str(  # noqa: PLR0913
         hugr_mlir_out=hugr_mlir_out,
         lowered_mlir_out=lowered_mlir_out,
         llvm_out=llvm_out,
+        obj_out=obj_out,
+        bin_out=bin_out,
         no_run=no_run,
         module_name=module_name,
     )
@@ -116,6 +129,8 @@ def run_guppy_module(  # noqa: PLR0913
     hugr_mlir_out: Path | None = None,
     lowered_mlir_out: Path | None = None,
     llvm_out: Path | None = None,
+    obj_out: Path | None = None,
+    bin_out: Path | None = None,
     no_run: bool = False,
     module_name: str | None = None,
 ) -> bool:
@@ -129,6 +144,10 @@ def run_guppy_module(  # noqa: PLR0913
     :param lowered_mlir_out: Optional. If provided, write the llvm-dialect MLIR to this
         file.
     :param llvm_out: Optional. If provided, write the compiled LLVMIR to this file.
+    :param obj_out: Optional. If provided, write the compiled object to this
+        file.
+    :param bin_out: Optional. If provided, write the compiled binary to this
+        file.
     :param no_run: Optional. If True, do not run the compiled artifact.
         The compilation will terminate after producing the required intermediary files.
     :param module_name: Optional. The name of the module to load. By default,
@@ -150,6 +169,8 @@ def run_guppy_module(  # noqa: PLR0913
         hugr_mlir_out=hugr_mlir_out,
         lowered_mlir_out=lowered_mlir_out,
         llvm_out=llvm_out,
+        obj_out=obj_out,
+        bin_out=bin_out,
         no_run=no_run,
         module_name=module_name,
     )
@@ -162,6 +183,8 @@ def run_guppy_from_stage(  # noqa: PLR0913
     hugr_mlir_out: Path | None = None,
     lowered_mlir_out: Path | None = None,
     llvm_out: Path | None = None,
+    obj_out: Path | None = None,
+    bin_out: Path | None = None,
     no_run: bool = False,
     module_name: str | None = None,
 ) -> bool:
@@ -177,6 +200,10 @@ def run_guppy_from_stage(  # noqa: PLR0913
         file.
     :param llvm_out: Optional. If provided, write the compiled LLVMIR to this
         file.
+    :param obj_out: Optional. If provided, write the compiled object to this
+        file.
+    :param bin_out: Optional. If provided, write the compiled binary to this
+        file.
     :param no_run: Optional. If True, do not run the compiled artifact. The
         compilation will terminate after producing the required intermediary
         files.
@@ -190,15 +217,15 @@ def run_guppy_from_stage(  # noqa: PLR0913
         MLIRLowerer(),
         MLIRCompiler(),
         LlvmCompiler(),
-        Runner(),
+        Linker(),
     ]
     output_files = [
         hugr_out,
         hugr_mlir_out,
         lowered_mlir_out,
         llvm_out,
-        None,
-        None,
+        obj_out,
+        bin_out,
     ]
 
     for compiler, output_file in zip(compilers, output_files, strict=True):
@@ -208,6 +235,8 @@ def run_guppy_from_stage(  # noqa: PLR0913
             hugr_mlir_out=hugr_mlir_out,
             lowered_mlir_out=lowered_mlir_out,
             llvm_out=llvm_out,
+            obj_out=obj_out,
+            bin_out=bin_out,
             no_run=no_run,
         ):
             break
@@ -230,16 +259,24 @@ def run_guppy_from_stage(  # noqa: PLR0913
                 LOGGER.error(err)
                 return False
 
+    if not no_run:
+        assert program.stage == Stage.EXECUTABLE
+        assert program.data_path
+
+        run_guppy_bin(program.data_path)
+
     return True
 
 
-def _are_we_done(  # noqa: PLR0913
+def _are_we_done(  # noqa: PLR0913, PLR0911
     stage: Stage,
     *,
     hugr_out: Path | None = None,
     hugr_mlir_out: Path | None = None,
     lowered_mlir_out: Path | None = None,
     llvm_out: Path | None = None,
+    obj_out: Path | None = None,
+    bin_out: Path | None = None,
     no_run: bool = False,
 ) -> bool:
     """Returns 'true' if we can stop the execution early."""
@@ -252,5 +289,9 @@ def _are_we_done(  # noqa: PLR0913
     if lowered_mlir_out and stage < Stage.LOWERED_MLIR:
         return False
     if llvm_out and stage < Stage.LLVM:
+        return False
+    if obj_out and stage < Stage.OBJECT:
+        return False
+    if bin_out and stage < Stage.EXECUTABLE:
         return False
     return True

@@ -21,11 +21,13 @@ class GuppyCompiler(StageCompiler):
         *,
         input_path: Path,
         input_encoding: EncodingMode,
+        output_path: Path | None,
         output_encoding: EncodingMode,
         temp_file: bool = False,
         module_name: str | None = None,
     ) -> str | bytes:
         """Load a Guppy file as a Python module, and return it."""
+        _ = output_path
         if input_encoding != EncodingMode.TEXTUAL:
             raise BitcodeProgramError
 

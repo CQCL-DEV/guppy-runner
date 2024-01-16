@@ -21,8 +21,8 @@ QIR_BACKEND_LIBS_ENV = "QIR_BACKEND_LIBS"
 DEFAULT_BIN = "a.out"
 
 
-class Runner(StageCompiler):
-    """A processor for running an LLVMIR artifact."""
+class Linker(StageCompiler):
+    """A processor for linking object files into binaries."""
 
     INPUT_STAGE: Stage = Stage.OBJECT
     OUTPUT_STAGE: Stage = Stage.EXECUTABLE
@@ -95,11 +95,11 @@ class Runner(StageCompiler):
             raise QirLibsNotSetError from None
 
 
-class RunnerError(CompilerError):
+class LinkerError(CompilerError):
     """Base class for Hugr compiler errors."""
 
 
-class QirLibsNotSetError(RunnerError):
+class QirLibsNotSetError(LinkerError):
     """Raised when the QIR libs path has not been set."""
 
     def __init__(self) -> None:
@@ -110,7 +110,7 @@ class QirLibsNotSetError(RunnerError):
         )
 
 
-class ClangNotFoundError(RunnerError):
+class ClangNotFoundError(LinkerError):
     """Raised when the translation program cannot be found."""
 
     def __init__(self) -> None:
@@ -118,7 +118,7 @@ class ClangNotFoundError(RunnerError):
         super().__init__(f"Could not find '{CLANG}' binary in your $PATH.")
 
 
-class ClangError(RunnerError):
+class ClangError(LinkerError):
     """Raised when the translation program cannot be found."""
 
     def __init__(self, perror: CalledProcessError) -> None:
