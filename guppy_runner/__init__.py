@@ -4,6 +4,8 @@ import sys
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
 
+from guppy.module import GuppyModule
+
 from guppy_runner.guppy_compiler import GuppyCompiler
 from guppy_runner.hugr_compiler import HugrCompiler
 from guppy_runner.mlir_compiler import MLIRCompiler
@@ -88,6 +90,47 @@ def run_guppy_str(  # noqa: PLR0913
         Stage.GUPPY,
         guppy_program,
         EncodingMode.TEXTUAL,
+    )
+
+    return run_guppy_from_stage(
+        stage_data,
+        hugr_out=hugr_out,
+        mlir_out=mlir_out,
+        llvm_out=llvm_out,
+        no_run=no_run,
+        module_name=module_name,
+    )
+
+
+def run_guppy_module(  # noqa: PLR0913
+    module: GuppyModule,
+    *,
+    hugr_out: Path | None = None,
+    mlir_out: Path | None = None,
+    llvm_out: Path | None = None,
+    no_run: bool = False,
+    module_name: str | None = None,
+) -> bool:
+    """Compile and run a Guppy program.
+
+    :param guppy_program: The Guppy program to run.
+    :param hugr_out: Optional. If provided, write the compiled Hugr to this file.
+        The file extension determines the encoding mode (json or msgpack).
+    :param mlir_out: Optional. If provided, write the compiled MLIR to this file.
+    :param llvm_out: Optional. If provided, write the compiled LLVMIR to this file.
+    :param no_run: Optional. If True, do not run the compiled artifact.
+        The compilation will terminate after producing the required intermediary files.
+    :param module_name: Optional. The name of the module to load. By default,
+        compiles the module used by @guppy.
+    :return: Whether the program ran successfully.
+    """
+    hugr = module.compile()
+    serial_hugr = hugr.serialize()
+
+    stage_data = StageData(
+        Stage.HUGR,
+        serial_hugr,
+        EncodingMode.BITCODE,
     )
 
     return run_guppy_from_stage(
