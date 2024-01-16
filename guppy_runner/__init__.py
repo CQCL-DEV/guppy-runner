@@ -9,6 +9,7 @@ from guppy.module import GuppyModule  # type: ignore
 from guppy_runner.compile import CompilerError
 from guppy_runner.compile.guppy_compiler import GuppyCompiler
 from guppy_runner.compile.hugr_compiler import HugrCompiler
+from guppy_runner.compile.llvm_compiler import LlvmCompiler
 from guppy_runner.compile.mlir_compiler import MLIRCompiler
 from guppy_runner.compile.mlir_lowerer import MLIRLowerer
 from guppy_runner.compile.runner import Runner
@@ -188,6 +189,7 @@ def run_guppy_from_stage(  # noqa: PLR0913
         HugrCompiler(),
         MLIRLowerer(),
         MLIRCompiler(),
+        LlvmCompiler(),
         Runner(),
     ]
     output_files = [
@@ -195,6 +197,7 @@ def run_guppy_from_stage(  # noqa: PLR0913
         hugr_mlir_out,
         lowered_mlir_out,
         llvm_out,
+        None,
         None,
     ]
 

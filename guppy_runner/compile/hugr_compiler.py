@@ -85,7 +85,7 @@ class HugrMlirTranslateNotFoundError(HugrCompilerError):
         """Initialize the error."""
         if not bin_from_path:
             super().__init__(
-                f"Could not find 'hugr-mlir-translate' binary in your $PATH. "
+                f"Could not find '{HUGR_MLIR_TRANSLATE}' binary in your $PATH. "
                 f"You can set an explicit path with the {HUGR_MLIR_TRANSLATE_ENV} env "
                 "variable.",
             )

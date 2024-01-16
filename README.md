@@ -20,7 +20,7 @@ export HUGR_MLIR_TRANSLATE='../hugr-mlir/_b/hugr-mlir/target/x86_64-unknown-linu
 export HUGR_MLIR_OPT='../hugr-mlir/_b/bin/hugr-mlir-opt'
 ```
 
-Finally, you'll need the MLIR tools from the LLVM project. See [here](https://mlir.llvm.org/getting_started/) for instructions.
+Finally, you'll need `mlir-translate`, `llc`, and `clang` from the LLVM project. See [here](https://mlir.llvm.org/getting_started/) for instructions.
 
 ## Usage
 
