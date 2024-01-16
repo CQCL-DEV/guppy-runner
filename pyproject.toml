@@ -11,7 +11,7 @@ guppy-runner = "guppy_runner.__main__:main"
 
 [tool.poetry.dependencies]
 python = "^3.11"
-guppy = { path = "../guppy" }
+guppy = { git = "git@github.com:CQCL-DEV/guppy.git", rev = "ac4659c" }
 logging = "^0.4.9.6"
 
 [tool.poetry.group.dev.dependencies]

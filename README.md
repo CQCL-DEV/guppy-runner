@@ -3,7 +3,7 @@ guppy-runner
 
 ## Setup
 
-This currently requires the `guppy` repository to be cloned locally. See `pyproject.toml` for the path.
+Currently this requires access to the private `guppy` repository.
 
 If you have `poetry` and `just` installed, you can run the following to get started:
 
