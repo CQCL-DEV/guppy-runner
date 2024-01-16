@@ -1,97 +1,52 @@
 """Methods for compiling Guppy programs into HUGRs."""
 
 import importlib.machinery
-import tempfile
 import types
 from pathlib import Path
 
 from guppy.module import GuppyModule  # type: ignore
 
-from guppy_runner.workflow import (
-    EncodingMode,
-    ProcessorError,
-    Stage,
-    StageData,
-    StageProcessor,
-)
+from guppy_runner.compile import CompilerError, StageCompiler
+from guppy_runner.stage import EncodingMode, Stage
 
 
-class GuppyCompiler(StageProcessor):
+class GuppyCompiler(StageCompiler):
     """A processor for compiling Guppy programs into Hugrs."""
 
     INPUT_STAGE: Stage = Stage.GUPPY
     OUTPUT_STAGE: Stage = Stage.HUGR
 
-    def run(
+    def process_stage(  # noqa: PLR0913
         self,
-        data: StageData,
         *,
-        hugr_out: Path | None = None,
-        output_mode: EncodingMode | None = None,
+        input_path: Path,
+        input_encoding: EncodingMode,
+        output_encoding: EncodingMode,
+        temp_file: bool = False,
         module_name: str | None = None,
-        **kwargs,
-    ) -> StageData:
-        """Transform the input into the following stage."""
-        _ = kwargs
-        self._check_stage(data)
-
-        # Determine the output encoding.
-        if output_mode is None:
-            if hugr_out is None:
-                output_mode = EncodingMode.BITCODE
-            else:
-                output_mode = (
-                    EncodingMode.from_file(hugr_out, Stage.HUGR) or EncodingMode.BITCODE
-                )
-
-        # Load the Guppy program and compile it.
-        if data.data_path is None:
-            # In-memory guppy programs are always strings.
-            assert isinstance(data.data, str)
-            module = self._load_guppy_string(data.data, module_name=module_name)
-        elif data.encoding == EncodingMode.TEXTUAL:
-            module = self._load_guppy_file(data.data_path, module_name=module_name)
-        else:
+    ) -> str | bytes:
+        """Load a Guppy file as a Python module, and return it."""
+        if input_encoding != EncodingMode.TEXTUAL:
             raise BitcodeProgramError
+
+        loader = importlib.machinery.SourceFileLoader("module", str(input_path))
+        py_module = types.ModuleType(loader.name)
+        try:
+            loader.exec_module(py_module)
+        except FileNotFoundError as err:
+            raise InvalidGuppyModulePathError(input_path) from err
+
+        module = self._get_module(
+            py_module,
+            input_path if not temp_file else None,
+            module_name=module_name,
+        )
         hugr = module.compile()
 
         # Serialize the Hugr artifact.
-        if output_mode == EncodingMode.TEXTUAL:
-            serial_hugr = hugr.serialize_json()
-        else:
-            serial_hugr = hugr.serialize()
-
-        out_data = StageData(Stage.HUGR, serial_hugr, output_mode)
-
-        # Write the Hugr if requested.
-        if hugr_out:
-            self._store_artifact(out_data, hugr_out)
-
-        return out_data
-
-    def _load_guppy_string(
-        self,
-        program: str,
-        module_name: str | None = None,
-    ) -> types.ModuleType:
-        """Load a Guppy file as a Python module, and return it."""
-        # Guppy needs the program to have an associated source,
-        # so we need to create a temporary file.
-        with tempfile.NamedTemporaryFile(
-            mode="w",
-            suffix=".py",
-            delete=False,
-        ) as temp_file:
-            temp_file.write(program)
-            program_path = Path(temp_file.name)
-        module = self._load_guppy_file(
-            program_path,
-            module_name=module_name,
-            temp_file=True,
-        )
-        # Delete the temporary file.
-        program_path.unlink()
-        return module
+        if output_encoding == EncodingMode.TEXTUAL:
+            return hugr.serialize_json()
+        return hugr.serialize()
 
     def _load_guppy_file(
         self,
@@ -139,7 +94,7 @@ class GuppyCompiler(StageProcessor):
         return module
 
 
-class GuppyCompilerError(ProcessorError):
+class GuppyCompilerError(CompilerError):
     """Base class for Guppy compiler errors."""
 
 

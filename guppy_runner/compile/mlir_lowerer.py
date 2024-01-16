@@ -3,92 +3,40 @@
 
 import os
 import subprocess
-import tempfile
 from pathlib import Path
 from subprocess import CalledProcessError
 
+from guppy_runner.compile import CompilerError, StageCompiler
+from guppy_runner.stage import EncodingMode, Stage
 from guppy_runner.util import LOGGER
-from guppy_runner.workflow import (
-    EncodingMode,
-    ProcessorError,
-    Stage,
-    StageData,
-    StageProcessor,
-)
 
 HUGR_MLIR_OPT = "hugr-mlir-opt"
 HUGR_MLIR_OPT_ENV = "HUGR_MLIR_OPT"
 
 
-class MLIRCompiler(StageProcessor):
-    """A processor for compiling MLIR objects into LLVMIR."""
+class MLIRLowerer(StageCompiler):
+    """A processor for lowering hugr MLIR into the LLVM dialect."""
 
-    INPUT_STAGE: Stage = Stage.MLIR
-    OUTPUT_STAGE: Stage = Stage.LLVM
+    INPUT_STAGE: Stage = Stage.HUGR_MLIR
+    OUTPUT_STAGE: Stage = Stage.LOWERED_MLIR
 
-    def run(self, data: StageData, *, llvm_out: Path | None, **kwargs) -> StageData:
-        """Transform the input into the following stage."""
-        _ = kwargs
-        self._check_stage(data)
-
-        # TODO: Support bitcode LLVMIR output
-        output_mode = EncodingMode.TEXTUAL
-
-        # Compile the MLIR.
-        if data.data_path is None:
-            llvm = self._compile_hugr_data(data.data, data.encoding, output_mode)
-        else:
-            llvm = self._compile_hugr_file(data.data_path, data.encoding, output_mode)
-
-        out_data = StageData(Stage.LLVM, llvm, output_mode)
-
-        # Write the llvm file if requested.
-        if llvm_out:
-            self._store_artifact(out_data, llvm_out)
-
-        return out_data
-
-    def _compile_hugr_data(
+    def process_stage(  # noqa: PLR0913
         self,
-        hugr: str | bytes,
-        input_encoding: EncodingMode,
-        output_encoding: EncodingMode,
-    ) -> str | bytes:
-        """Compile a serialized MLIR into LLVMIR."""
-        # hugr-mlir-opt requires an input file.
-        mode = "w" if input_encoding == EncodingMode.TEXTUAL else "wb"
-        with tempfile.NamedTemporaryFile(
-            mode=mode,
-            suffix=".mlir",
-            delete=False,
-        ) as temp_file:
-            temp_file.write(hugr)
-            hugr_path = Path(temp_file.name)
-        llvm = self._exec_translate(hugr_path, input_encoding, output_encoding)
-        hugr_path.unlink()
-        return llvm
-
-    def _compile_hugr_file(
-        self,
-        path: Path,
-        input_encoding: EncodingMode,
-        output_encoding: EncodingMode,
-    ) -> str | bytes:
-        """Compile a MLIR file into LLVMIR."""
-        return self._exec_translate(path, input_encoding, output_encoding)
-
-    def _exec_translate(
-        self,
+        *,
         input_path: Path,
         input_encoding: EncodingMode,
         output_encoding: EncodingMode,
+        temp_file: bool = False,
+        module_name: str | None = None,
     ) -> str | bytes:
-        """Execute the `mlir-opt` command."""
-        assert (
-            input_encoding == EncodingMode.TEXTUAL
-        ), "Bitcode MLIR is not supported yet"
+        """Execute `hugr-mlir-opt`."""
+        _ = input_encoding, temp_file, module_name
+
         output_as_text = output_encoding == EncodingMode.TEXTUAL
         cmd = [self._get_compiler()[0], input_path, "--lower-hugr"]
+        if not output_as_text:
+            cmd += ["--emit-bytecode"]
+
         cmd_str = " ".join(str(c) for c in cmd)
         msg = f"Executing command: '{cmd_str}'"
         LOGGER.info(msg)
@@ -100,7 +48,7 @@ class MLIRCompiler(StageProcessor):
                 text=output_as_text,
             )
         except FileNotFoundError as err:
-            raise MlirLlvmTranslateNotFoundError(*self._get_compiler()) from err
+            raise MlirLowererTranslateNotFoundError(*self._get_compiler()) from err
         except CalledProcessError as err:
             raise MlirOptError(err) from err
         return completed.stdout
@@ -119,11 +67,11 @@ class MLIRCompiler(StageProcessor):
         return (Path(HUGR_MLIR_OPT), False)
 
 
-class MlirCompilerError(ProcessorError):
+class MlirLowererError(CompilerError):
     """Base class for Mlir compiler errors."""
 
 
-class MlirLlvmTranslateNotFoundError(MlirCompilerError):
+class MlirLowererTranslateNotFoundError(MlirLowererError):
     """Raised when the translation program cannot be found."""
 
     def __init__(self, path: Path, bin_from_path: bool) -> None:  # noqa: FBT001
@@ -141,7 +89,7 @@ class MlirLlvmTranslateNotFoundError(MlirCompilerError):
             )
 
 
-class MlirOptError(MlirCompilerError):
+class MlirOptError(MlirLowererError):
     """Raised when the translation program cannot be found."""
 
     def __init__(self, perror: CalledProcessError) -> None:

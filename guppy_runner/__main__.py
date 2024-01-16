@@ -14,12 +14,12 @@ from argparse import ArgumentParser, Namespace
 from pathlib import Path
 
 from guppy_runner import run_guppy_from_stage
-from guppy_runner.util import LOGGER
-from guppy_runner.workflow import (
+from guppy_runner.stage import (
     EncodingMode,
     Stage,
     StageData,
 )
+from guppy_runner.util import LOGGER
 
 
 def parse_args() -> Namespace:
@@ -64,9 +64,14 @@ def parse_args() -> Namespace:
         "json. Use `--bitcode` to `--textual` to override this.",
     )
     input_mode.add_argument(
-        "--mlir",
+        "--hugr-mlir",
         action="store_true",
-        help="Read the input as an mlir file.",
+        help="Read the input as an hugr-dialect mlir file.",
+    )
+    input_mode.add_argument(
+        "--llvm-mlir",
+        action="store_true",
+        help="Read the input as an llvm-dialect mlir file.",
     )
     input_mode.add_argument(
         "--llvm",
@@ -101,20 +106,28 @@ def parse_args() -> Namespace:
         "The file extension determines whether the file is encoded in msgpack or json.",
     )
     artifacts.add_argument(
-        "--store-mlir",
+        "--store-hugr-mlir",
         type=Path,
         metavar="MLIR.mlir",
-        help="Store the intermediary MLIR object, in textual mode.",
-        # TODO: Support bitcode too.
-        # Can we detect the encoding mode from the file extension?
+        help="Store the intermediary hugr-dialect MLIR object. "
+        "The file extension determines whether the file is encoded in textual (.mlir) "
+        "or bytecode mode (.mlirbc).",
+    )
+    artifacts.add_argument(
+        "--store-llvm-mlir",
+        type=Path,
+        metavar="MLIR.mlir",
+        help="Store the intermediary llvm-dialect MLIR object. "
+        "The file extension determines whether the file is encoded in textual (.mlir) "
+        "or bytecode mode (.mlirbc).",
     )
     artifacts.add_argument(
         "--store-llvm",
         type=Path,
         metavar="LLVM.ll",
-        help="Store the intermediary LLVMIR object, in textual mode.",
-        # TODO: Support bitcode too.
-        # Can we detect the encoding mode from the file extension?
+        help="Store the intermediary LLVMIR object."
+        "The file extension determines whether the file is encoded in textual (.ll) or "
+        "bytecode mode (.bc).",
     )
 
     # Runnable artifact options
@@ -147,8 +160,10 @@ def get_input_state(args: Namespace) -> Stage:
     """The stage of the input file."""
     if args.hugr:
         return Stage.HUGR
-    if args.mlir:
-        return Stage.MLIR
+    if args.hugr_mlir:
+        return Stage.HUGR_MLIR
+    if args.llvm_mlir:
+        return Stage.LOWERED_MLIR
     if args.llvm:
         return Stage.LLVM
     return Stage.GUPPY
@@ -185,8 +200,14 @@ def validate_args(args: Namespace, parser: ArgumentParser) -> None:
     """Validate whether can produce the intermediary artifacts from the input."""
     if args.store_hugr and args.input_stage >= Stage.HUGR:
         parser.error("Cannot produce a HUGR artifact from the given input.")
-    if args.store_mlir and args.input_stage >= Stage.MLIR:
-        parser.error("Cannot produce a MLIR artifact from the given input.")
+    if args.store_hugr_mlir and args.input_stage >= Stage.HUGR_MLIR:
+        parser.error(
+            "Cannot produce a hugr-dialect MLIR artifact from the given input.",
+        )
+    if args.store_llvm_mlir and args.input_stage >= Stage.LOWERED_MLIR:
+        parser.error(
+            "Cannot produce an llvm-dialect MLIR artifact from the given input.",
+        )
     if args.store_llvm and args.input_stage >= Stage.LLVM:
         parser.error("Cannot produce a LLVM artifact from the given input.")
 
@@ -213,7 +234,8 @@ def main() -> None:
     success = run_guppy_from_stage(
         stage_data,
         hugr_out=args.store_hugr,
-        mlir_out=args.store_mlir,
+        hugr_mlir_out=args.store_hugr_mlir,
+        lowered_mlir_out=args.store_llvm_mlir,
         llvm_out=args.store_llvm,
         no_run=args.no_run,
         module_name=args.module_name,

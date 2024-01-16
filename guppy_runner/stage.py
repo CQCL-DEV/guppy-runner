@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import sys
-from abc import ABC, abstractmethod
 from enum import Enum
 from typing import TYPE_CHECKING
 
@@ -14,11 +13,18 @@ if TYPE_CHECKING:
 class Stage(Enum):
     """The possible stages of a program compilation."""
 
+    # Input guppy program.
     GUPPY = 0
+    # Hugr for the program.
     HUGR = 1
-    MLIR = 2
-    LLVM = 3
-    RUNNABLE = 4
+    # High level MLIR
+    HUGR_MLIR = 2
+    # MLIR in the llvm dialect
+    LOWERED_MLIR = 3
+    # LLVMIR
+    LLVM = 4
+    # Executable file
+    RUNNABLE = 5
 
     def __lt__(self, other: Stage) -> bool:
         """Compare the stages."""
@@ -36,6 +42,44 @@ class Stage(Enum):
         """Compare the stages."""
         return self.value >= other.value
 
+    def file_suffix(self, encoding: EncodingMode) -> str:  # noqa: PLR0911
+        """Returns the file suffix for the stage."""
+        if self == Stage.GUPPY:
+            return ".py"
+
+        if self == Stage.HUGR and encoding == EncodingMode.BITCODE:
+            return ".msgpack"
+        if self == Stage.HUGR and encoding == EncodingMode.TEXTUAL:
+            return ".json"
+
+        if self == Stage.HUGR_MLIR and encoding == EncodingMode.BITCODE:
+            return ".mlirbc"
+        if self == Stage.HUGR_MLIR and encoding == EncodingMode.TEXTUAL:
+            return ".mlir"
+
+        if self == Stage.LOWERED_MLIR and encoding == EncodingMode.BITCODE:
+            return ".mlirbc"
+        if self == Stage.LOWERED_MLIR and encoding == EncodingMode.TEXTUAL:
+            return ".mlir"
+
+        if self == Stage.LLVM and encoding == EncodingMode.BITCODE:
+            return ".bc"
+        if self == Stage.LLVM and encoding == EncodingMode.TEXTUAL:
+            return ".ll"
+
+        return ""
+
+    def default_encoding(self) -> EncodingMode:
+        """Returns the default file encoding for the stage."""
+        return {
+            Stage.GUPPY: EncodingMode.TEXTUAL,
+            Stage.HUGR: EncodingMode.TEXTUAL,
+            Stage.HUGR_MLIR: EncodingMode.TEXTUAL,
+            Stage.LOWERED_MLIR: EncodingMode.TEXTUAL,
+            Stage.LLVM: EncodingMode.TEXTUAL,
+            Stage.RUNNABLE: EncodingMode.BITCODE,
+        }[self]
+
 
 class EncodingMode(Enum):
     """The encoding format for a compiled object.
@@ -48,15 +92,36 @@ class EncodingMode(Enum):
     TEXTUAL = 1
 
     @staticmethod
-    def from_file(file: Path, stage: Stage) -> EncodingMode | None:
+    def from_file(file: Path, stage: Stage) -> EncodingMode | None:  # noqa: PLR0911, C901
         """Try to derive the encoding mode from a file extension."""
         ext = file.suffix
+
+        if stage == Stage.GUPPY:
+            return EncodingMode.TEXTUAL
+
         if stage == Stage.HUGR and ext == ".msgpack":
             return EncodingMode.BITCODE
         if stage == Stage.HUGR and ext == ".json":
             return EncodingMode.TEXTUAL
-        if stage == Stage.MLIR and ext == ".mlir":
+
+        if stage == Stage.HUGR_MLIR and ext == ".mlirbc":
+            return EncodingMode.BITCODE
+        if stage == Stage.HUGR_MLIR and ext == ".mlir":
             return EncodingMode.TEXTUAL
+
+        if stage == Stage.LOWERED_MLIR and ext == ".mlirbc":
+            return EncodingMode.BITCODE
+        if stage == Stage.LOWERED_MLIR and ext == ".mlir":
+            return EncodingMode.TEXTUAL
+
+        if stage == Stage.LLVM and ext == ".bc":
+            return EncodingMode.BITCODE
+        if stage == Stage.LLVM and ext == ".ll":
+            return EncodingMode.TEXTUAL
+
+        if stage == Stage.RUNNABLE:
+            return EncodingMode.BITCODE
+
         return None
 
     @staticmethod
@@ -134,35 +199,3 @@ class StageData:
             self._data = self.data_path.read_text()
         else:
             self._data = self.data_path.read_bytes()
-
-
-class StageProcessor(ABC):
-    """A processor for a single stage of a Guppy program."""
-
-    INPUT_STAGE: Stage
-    OUTPUT_STAGE: Stage
-
-    @abstractmethod
-    def run(self, data: StageData, **kwargs) -> StageData:
-        """Transform the input into the following stage."""
-
-    def _check_stage(self, data: StageData) -> None:
-        if data.stage != self.INPUT_STAGE:
-            raise InvalidStageError(data.stage, self.INPUT_STAGE)
-
-    def _store_artifact(self, data: StageData, path: Path) -> None:
-        mode = "w" if data.encoding == EncodingMode.TEXTUAL else "wb"
-        with path.open(mode=mode) as file:
-            file.write(data.data)
-
-
-class ProcessorError(Exception):
-    """Base class for processor errors."""
-
-
-class InvalidStageError(ProcessorError):
-    """Invalid input data."""
-
-    def __init__(self, stage: Stage, expected: Stage) -> None:
-        """Initialize the error."""
-        super().__init__(f"Expected {expected} artifact, got {stage}.")

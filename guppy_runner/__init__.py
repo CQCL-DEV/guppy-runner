@@ -4,20 +4,16 @@ import sys
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
 
-from guppy.module import GuppyModule
+from guppy.module import GuppyModule  # type: ignore
 
-from guppy_runner.guppy_compiler import GuppyCompiler
-from guppy_runner.hugr_compiler import HugrCompiler
-from guppy_runner.mlir_compiler import MLIRCompiler
-from guppy_runner.runner import Runner
+from guppy_runner.compile import CompilerError
+from guppy_runner.compile.guppy_compiler import GuppyCompiler
+from guppy_runner.compile.hugr_compiler import HugrCompiler
+from guppy_runner.compile.mlir_compiler import MLIRCompiler
+from guppy_runner.compile.mlir_lowerer import MLIRLowerer
+from guppy_runner.compile.runner import Runner
+from guppy_runner.stage import EncodingMode, Stage, StageData
 from guppy_runner.util import LOGGER
-from guppy_runner.workflow import (
-    EncodingMode,
-    ProcessorError,
-    Stage,
-    StageData,
-    StageProcessor,
-)
 
 __all__ = [
     "run_guppy",
@@ -30,7 +26,8 @@ def run_guppy(  # noqa: PLR0913
     guppy_path: Path,
     *,
     hugr_out: Path | None = None,
-    mlir_out: Path | None = None,
+    hugr_mlir_out: Path | None = None,
+    lowered_mlir_out: Path | None = None,
     llvm_out: Path | None = None,
     no_run: bool = False,
     module_name: str | None = None,
@@ -40,7 +37,10 @@ def run_guppy(  # noqa: PLR0913
     :param guppy_path: The Guppy program path to run.
     :param hugr_out: Optional. If provided, write the compiled Hugr to this file.
         The file extension determines the encoding mode (json or msgpack).
-    :param mlir_out: Optional. If provided, write the compiled MLIR to this file.
+    :param hugr_mlir_out: Optional. If provided, write the hugr-dialect MLIR to this
+        file.
+    :param lowered_mlir_out: Optional. If provided, write the llvm-dialect MLIR to this
+        file.
     :param llvm_out: Optional. If provided, write the compiled LLVMIR to this file.
     :param no_run: Optional. If True, do not run the compiled artifact.
         The compilation will terminate after producing the required intermediary files.
@@ -57,7 +57,8 @@ def run_guppy(  # noqa: PLR0913
     return run_guppy_from_stage(
         stage_data,
         hugr_out=hugr_out,
-        mlir_out=mlir_out,
+        hugr_mlir_out=hugr_mlir_out,
+        lowered_mlir_out=lowered_mlir_out,
         llvm_out=llvm_out,
         no_run=no_run,
         module_name=module_name,
@@ -68,7 +69,8 @@ def run_guppy_str(  # noqa: PLR0913
     guppy_program: str,
     *,
     hugr_out: Path | None = None,
-    mlir_out: Path | None = None,
+    hugr_mlir_out: Path | None = None,
+    lowered_mlir_out: Path | None = None,
     llvm_out: Path | None = None,
     no_run: bool = False,
     module_name: str | None = None,
@@ -78,7 +80,10 @@ def run_guppy_str(  # noqa: PLR0913
     :param guppy_program: The Guppy program to run.
     :param hugr_out: Optional. If provided, write the compiled Hugr to this file.
         The file extension determines the encoding mode (json or msgpack).
-    :param mlir_out: Optional. If provided, write the compiled MLIR to this file.
+    :param hugr_mlir_out: Optional. If provided, write the hugr-dialect MLIR to this
+        file.
+    :param lowered_mlir_out: Optional. If provided, write the llvm-dialect MLIR to this
+        file.
     :param llvm_out: Optional. If provided, write the compiled LLVMIR to this file.
     :param no_run: Optional. If True, do not run the compiled artifact.
         The compilation will terminate after producing the required intermediary files.
@@ -95,7 +100,8 @@ def run_guppy_str(  # noqa: PLR0913
     return run_guppy_from_stage(
         stage_data,
         hugr_out=hugr_out,
-        mlir_out=mlir_out,
+        hugr_mlir_out=hugr_mlir_out,
+        lowered_mlir_out=lowered_mlir_out,
         llvm_out=llvm_out,
         no_run=no_run,
         module_name=module_name,
@@ -106,7 +112,8 @@ def run_guppy_module(  # noqa: PLR0913
     module: GuppyModule,
     *,
     hugr_out: Path | None = None,
-    mlir_out: Path | None = None,
+    hugr_mlir_out: Path | None = None,
+    lowered_mlir_out: Path | None = None,
     llvm_out: Path | None = None,
     no_run: bool = False,
     module_name: str | None = None,
@@ -116,7 +123,10 @@ def run_guppy_module(  # noqa: PLR0913
     :param guppy_program: The Guppy program to run.
     :param hugr_out: Optional. If provided, write the compiled Hugr to this file.
         The file extension determines the encoding mode (json or msgpack).
-    :param mlir_out: Optional. If provided, write the compiled MLIR to this file.
+    :param hugr_mlir_out: Optional. If provided, write the hugr-dialect MLIR to this
+        file.
+    :param lowered_mlir_out: Optional. If provided, write the llvm-dialect MLIR to this
+        file.
     :param llvm_out: Optional. If provided, write the compiled LLVMIR to this file.
     :param no_run: Optional. If True, do not run the compiled artifact.
         The compilation will terminate after producing the required intermediary files.
@@ -136,7 +146,8 @@ def run_guppy_module(  # noqa: PLR0913
     return run_guppy_from_stage(
         stage_data,
         hugr_out=hugr_out,
-        mlir_out=mlir_out,
+        hugr_mlir_out=hugr_mlir_out,
+        lowered_mlir_out=lowered_mlir_out,
         llvm_out=llvm_out,
         no_run=no_run,
         module_name=module_name,
@@ -147,7 +158,8 @@ def run_guppy_from_stage(  # noqa: PLR0913
     program: StageData,
     *,
     hugr_out: Path | None = None,
-    mlir_out: Path | None = None,
+    hugr_mlir_out: Path | None = None,
+    lowered_mlir_out: Path | None = None,
     llvm_out: Path | None = None,
     no_run: bool = False,
     module_name: str | None = None,
@@ -158,7 +170,9 @@ def run_guppy_from_stage(  # noqa: PLR0913
         start compilation from that stage.
     :param hugr_out: Optional. If provided, write the compiled Hugr to this
         file. The file extension determines the encoding mode (json or msgpack).
-    :param mlir_out: Optional. If provided, write the compiled MLIR to this
+    :param hugr_mlir_out: Optional. If provided, write the hugr-dialect MLIR to this
+        file.
+    :param lowered_mlir_out: Optional. If provided, write the llvm-dialect MLIR to this
         file.
     :param llvm_out: Optional. If provided, write the compiled LLVMIR to this
         file.
@@ -172,15 +186,24 @@ def run_guppy_from_stage(  # noqa: PLR0913
     compilers = [
         GuppyCompiler(),
         HugrCompiler(),
+        MLIRLowerer(),
         MLIRCompiler(),
         Runner(),
     ]
+    output_files = [
+        hugr_out,
+        hugr_mlir_out,
+        lowered_mlir_out,
+        llvm_out,
+        None,
+    ]
 
-    for compiler in compilers:
+    for compiler, output_file in zip(compilers, output_files, strict=True):
         if _are_we_done(
             program.stage,
             hugr_out=hugr_out,
-            mlir_out=mlir_out,
+            hugr_mlir_out=hugr_mlir_out,
+            lowered_mlir_out=lowered_mlir_out,
             llvm_out=llvm_out,
             no_run=no_run,
         ):
@@ -197,23 +220,22 @@ def run_guppy_from_stage(  # noqa: PLR0913
             try:
                 program = compiler.run(
                     program,
-                    hugr_out=hugr_out,
-                    mlir_out=mlir_out,
-                    llvm_out=llvm_out,
+                    output_file=output_file,
                     module_name=module_name,
                 )
-            except ProcessorError as err:
+            except CompilerError as err:
                 LOGGER.error(err)
                 return False
 
     return True
 
 
-def _are_we_done(
+def _are_we_done(  # noqa: PLR0913
     stage: Stage,
     *,
     hugr_out: Path | None = None,
-    mlir_out: Path | None = None,
+    hugr_mlir_out: Path | None = None,
+    lowered_mlir_out: Path | None = None,
     llvm_out: Path | None = None,
     no_run: bool = False,
 ) -> bool:
@@ -222,7 +244,9 @@ def _are_we_done(
         return False
     if hugr_out and stage < Stage.HUGR:
         return False
-    if mlir_out and stage < Stage.MLIR:
+    if hugr_mlir_out and stage < Stage.HUGR_MLIR:
+        return False
+    if lowered_mlir_out and stage < Stage.LOWERED_MLIR:
         return False
     if llvm_out and stage < Stage.LLVM:
         return False

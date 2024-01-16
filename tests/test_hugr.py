@@ -3,12 +3,12 @@
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 
-from guppy.decorator import guppy
-from guppy.module import GuppyModule
+from guppy.decorator import guppy  # type: ignore
+from guppy.module import GuppyModule  # type: ignore
 
 from guppy_runner import run_guppy, run_guppy_module
 
-EVEN_ODD = "test_files/even_odd.py"
+EVEN_ODD: Path = Path("test_files/even_odd.py")
 
 
 def test_even_odd():
@@ -25,7 +25,7 @@ def test_even_odd():
         assert run_guppy(
             EVEN_ODD,
             hugr_out=Path(temp_hugr.name),
-            mlir_out=Path(temp_mlir.name),
+            hugr_mlir_out=Path(temp_mlir.name),
             # TODO: llvmir generation is broken
             # llvm_out="test_files/even_odd.ll",  # noqa: ERA001
             no_run=True,
@@ -48,7 +48,7 @@ def test_from_module():
         # so we have to assume that they are correct.
         assert run_guppy_module(
             module,
-            mlir_out=Path(temp_mlir.name),
+            hugr_mlir_out=Path(temp_mlir.name),
             # TODO: llvmir generation is broken
             # llvm_out="test_files/even_odd.ll",  # noqa: ERA001
             no_run=True,
