@@ -36,7 +36,7 @@ class LlvmCompiler(StageCompiler):
         output_encoding: EncodingMode,
         temp_file: bool = False,
         module_name: str | None = None,
-    ) -> str | bytes:
+    ) -> str | bytes | Path:
         """Compile the LLVMIR artifact into an object file."""
         _ = input_path, input_encoding, output_encoding, temp_file, module_name
 
