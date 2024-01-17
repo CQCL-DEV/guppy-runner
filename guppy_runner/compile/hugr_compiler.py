@@ -59,7 +59,11 @@ class HugrCompiler(StageCompiler):
         except CalledProcessError as err:
             raise MlirTranslateError(err) from err
 
-        return completed.stdout
+        # TODO: Temporary fix. `hugr-mlir-translate` is not marking main as public.
+        return str(completed.stdout).replace(
+            "func @main",
+            "func public @main",
+        )
 
     def _get_compiler(self) -> tuple[Path, bool]:
         """Returns the path to the `hugr-mlir-translate` binary.
