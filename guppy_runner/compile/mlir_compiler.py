@@ -1,6 +1,7 @@
 """Methods for producing runnable artifacts from MLIR objects."""
 
 
+import os
 import subprocess
 from pathlib import Path
 from subprocess import CalledProcessError
@@ -10,6 +11,7 @@ from guppy_runner.stage import EncodingMode, Stage
 from guppy_runner.util import LOGGER
 
 MLIR_TRANSLATE = "mlir-translate"
+MLIR_TRANSLATE_ENV = "MLIR_TRANSLATE"
 
 
 class MLIRCompiler(StageCompiler):
@@ -59,6 +61,8 @@ class MLIRCompiler(StageCompiler):
         The returned boolean indicates whether the path was overridden via the
         environment variable.
         """
+        if MLIR_TRANSLATE_ENV in os.environ:
+            return (Path(os.environ[MLIR_TRANSLATE_ENV]), True)
         return (Path(MLIR_TRANSLATE), False)
 
 

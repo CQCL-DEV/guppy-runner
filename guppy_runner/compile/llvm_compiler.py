@@ -1,6 +1,7 @@
 """Utilities to link and run the final LLVM artifact."""
 
 
+import os
 import subprocess
 from pathlib import Path
 from subprocess import CalledProcessError
@@ -14,6 +15,10 @@ from guppy_runner.stage import EncodingMode, Stage
 from guppy_runner.util import LOGGER
 
 LLC = "llc"
+LLC_ENV = "LLC"
+
+# TODO: Find the way to use a temporary file that gets deleted afterwards.
+DEFAULT_OBJ = Path("a.o")
 
 
 class LlvmCompiler(StageCompiler):
@@ -38,6 +43,9 @@ class LlvmCompiler(StageCompiler):
         if output_encoding == EncodingMode.TEXTUAL:
             raise UnsupportedEncodingError(self.OUTPUT_STAGE, output_encoding)
 
+        if not output_path:
+            output_path = DEFAULT_OBJ
+
         output_as_text = output_encoding == EncodingMode.TEXTUAL
         cmd = [self._get_compiler()[0], input_path, "--filetype=obj"]
         if output_path:
@@ -47,7 +55,7 @@ class LlvmCompiler(StageCompiler):
         msg = f"Executing command: '{cmd_str}'"
         LOGGER.info(msg)
         try:
-            completed = subprocess.run(
+            subprocess.run(
                 cmd,  # noqa: S603
                 capture_output=True,
                 check=True,
@@ -58,9 +66,7 @@ class LlvmCompiler(StageCompiler):
         except CalledProcessError as err:
             raise LlcError(err) from err
 
-        if output_path:
-            return output_path
-        return completed.stdout
+        return output_path
 
     def _get_compiler(self) -> tuple[Path, bool]:
         """Returns the path to the `llc` binary.
@@ -68,6 +74,8 @@ class LlvmCompiler(StageCompiler):
         The returned boolean indicates whether the path was overridden via the
         environment variable.
         """
+        if LLC_ENV in os.environ:
+            return (Path(os.environ[LLC_ENV]), True)
         return (Path(LLC), False)
 
 

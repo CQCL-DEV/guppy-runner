@@ -18,7 +18,7 @@ CLANG = "clang"
 QIR_BACKEND_LIBS_ENV = "QIR_BACKEND_LIBS"
 
 # TODO: Find the way to use a temporary file that gets deleted afterwards.
-DEFAULT_BIN = "a.out"
+DEFAULT_BIN = Path("a.out")
 
 
 class Linker(StageCompiler):
