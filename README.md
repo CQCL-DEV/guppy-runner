@@ -25,41 +25,25 @@ You also have to define the path to the compiled `qir_backend` libs from [`qir-r
 export QIR_BACKEND_LIBS=../qir-runner/target/debug
 ```
 
-Finally, you'll need `mlir-translate`, `llc`, and `clang` from the LLVM project. See [here](https://mlir.llvm.org/getting_started/) for instructions.
+Finally, you'll need `mlir-translate`, `llc`, and `clang` from the LLVM project.
+See [here](https://mlir.llvm.org/getting_started/) for instructions.
+Note that this should be the same version used to compile `hugr-mlir`.
+You can override the default paths by setting the `MLIR_TRANSLATE`, `LLC`, and `CLANG` environment variables.
 
 ## Usage
 
-Convert a `guppy` program to a `hugr` artifact:
-
+Run your program from the command line,
 ```bash
-just run test_files/even_odd.py --store-hugr hugr.json --no-run
+just run guppy_program.py
 ```
 
-This works similarly for storing the `mlir` and `llvm` artifacts:
-
-```bash
-just run test_files/even_odd.py --store-hugr hugr.msgpack --store-mlir program.mlir --store-llvm program.ll --no-run
-```
-
-The intermediary artifacts can also be used as inputs:
-
-```bash
-just run program.mlir --mlir --store-llvm program.ll --no-run
-```
-
-The input is read from stdin if no file is specified:
-
-```bash
-cat program.mlir | just run --mlir --store-llvm program.ll --no-run
-```
-
-Note that actually running the program is a work in progress.
+Check `just run --help` for more options.
 
 The runner can also be used as a library,
 ```python
 from guppy_runner import run_guppy
 
-run_guppy("guppy.py", hugr_out="hugr.json", no_run=True)
+run_guppy("guppy.py")
 ```
 
 ## License
