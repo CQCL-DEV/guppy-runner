@@ -4,7 +4,7 @@ import sys
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
 
-from guppy.module import GuppyModule  # type: ignore
+from guppylang.module import GuppyModule  # type: ignore
 
 from guppy_runner.compile import CompilerError
 from guppy_runner.compile.guppy_compiler import GuppyCompiler
