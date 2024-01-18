@@ -107,8 +107,10 @@ pydantic = "^2.5.3"
 typing-extensions = "^4.9.0"
 
 [package.source]
-type = "directory"
-url = "../guppy"
+type = "git"
+url = "git@github.com:CQCL-DEV/guppy.git"
+reference = "f52a5de"
+resolved_reference = "f52a5de95972d028167f5800d16573c178c9e2be"
 
 [[package]]
 name = "identify"
@@ -606,4 +608,4 @@ test = ["covdefaults (>=2.3)", "coverage (>=7.2.7)", "coverage-enable-subprocess
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "e116a077489208438de09bda7dd61b32b017a109cef04c7d644ed9fb666424b9"
+content-hash = "069c716e12dae24996d1f82f13a7ad129bf9af588a01317cf62b13d028ec2be1"

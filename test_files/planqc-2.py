@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+from guppylang.decorator import guppy
 
 
 @guppy
