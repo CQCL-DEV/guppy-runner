@@ -25,12 +25,13 @@ class MLIRLowerer(StageCompiler):
         *,
         input_path: Path,
         input_encoding: EncodingMode,
+        output_path: Path | None,
         output_encoding: EncodingMode,
         temp_file: bool = False,
         module_name: str | None = None,
     ) -> str | bytes:
         """Execute `hugr-mlir-opt`."""
-        _ = input_encoding, temp_file, module_name
+        _ = input_encoding, output_path, temp_file, module_name
 
         output_as_text = output_encoding == EncodingMode.TEXTUAL
         cmd = [self._get_compiler()[0], input_path, "--lower-hugr"]

@@ -23,8 +23,10 @@ class Stage(Enum):
     LOWERED_MLIR = 3
     # LLVMIR
     LLVM = 4
+    # .o file
+    OBJECT = 5
     # Executable file
-    RUNNABLE = 5
+    EXECUTABLE = 6
 
     def __lt__(self, other: Stage) -> bool:
         """Compare the stages."""
@@ -42,7 +44,7 @@ class Stage(Enum):
         """Compare the stages."""
         return self.value >= other.value
 
-    def file_suffix(self, encoding: EncodingMode) -> str:  # noqa: PLR0911
+    def file_suffix(self, encoding: EncodingMode) -> str:  # noqa: PLR0911, C901
         """Returns the file suffix for the stage."""
         if self == Stage.GUPPY:
             return ".py"
@@ -67,6 +69,12 @@ class Stage(Enum):
         if self == Stage.LLVM and encoding == EncodingMode.TEXTUAL:
             return ".ll"
 
+        if self == Stage.OBJECT:
+            return ".o"
+
+        if self == Stage.EXECUTABLE:
+            return ".out"
+
         return ""
 
     def default_encoding(self) -> EncodingMode:
@@ -77,7 +85,8 @@ class Stage(Enum):
             Stage.HUGR_MLIR: EncodingMode.TEXTUAL,
             Stage.LOWERED_MLIR: EncodingMode.TEXTUAL,
             Stage.LLVM: EncodingMode.TEXTUAL,
-            Stage.RUNNABLE: EncodingMode.BITCODE,
+            Stage.OBJECT: EncodingMode.BITCODE,
+            Stage.EXECUTABLE: EncodingMode.BITCODE,
         }[self]
 
 
@@ -119,7 +128,10 @@ class EncodingMode(Enum):
         if stage == Stage.LLVM and ext == ".ll":
             return EncodingMode.TEXTUAL
 
-        if stage == Stage.RUNNABLE:
+        if stage == Stage.OBJECT:
+            return EncodingMode.BITCODE
+
+        if stage == Stage.EXECUTABLE:
             return EncodingMode.BITCODE
 
         return None

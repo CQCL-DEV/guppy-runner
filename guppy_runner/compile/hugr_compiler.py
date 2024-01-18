@@ -25,12 +25,13 @@ class HugrCompiler(StageCompiler):
         *,
         input_path: Path,
         input_encoding: EncodingMode,
+        output_path: Path | None,
         output_encoding: EncodingMode,
         temp_file: bool = False,
         module_name: str | None = None,
     ) -> str | bytes:
         """Execute `hugr-mlir-translate`."""
-        _ = temp_file, module_name
+        _ = output_path, temp_file, module_name
 
         if output_encoding == EncodingMode.BITCODE:
             raise UnsupportedEncodingError(self.OUTPUT_STAGE, output_encoding)
@@ -58,7 +59,11 @@ class HugrCompiler(StageCompiler):
         except CalledProcessError as err:
             raise MlirTranslateError(err) from err
 
-        return completed.stdout
+        # TODO: Temporary fix. `hugr-mlir-translate` is not marking main as public.
+        return str(completed.stdout).replace(
+            "func @main",
+            "func public @main",
+        )
 
     def _get_compiler(self) -> tuple[Path, bool]:
         """Returns the path to the `hugr-mlir-translate` binary.
@@ -85,7 +90,7 @@ class HugrMlirTranslateNotFoundError(HugrCompilerError):
         """Initialize the error."""
         if not bin_from_path:
             super().__init__(
-                f"Could not find 'hugr-mlir-translate' binary in your $PATH. "
+                f"Could not find '{HUGR_MLIR_TRANSLATE}' binary in your $PATH. "
                 f"You can set an explicit path with the {HUGR_MLIR_TRANSLATE_ENV} env "
                 "variable.",
             )

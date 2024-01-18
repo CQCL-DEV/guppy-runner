@@ -129,6 +129,18 @@ def parse_args() -> Namespace:
         "The file extension determines whether the file is encoded in textual (.ll) or "
         "bytecode mode (.bc).",
     )
+    artifacts.add_argument(
+        "--store-obj",
+        type=Path,
+        metavar="OBJ.o",
+        help="Store the intermediary object file.",
+    )
+    artifacts.add_argument(
+        "--store-bin",
+        type=Path,
+        metavar="a.out",
+        help="Store the executable binary.",
+    )
 
     # Runnable artifact options
 
@@ -198,18 +210,20 @@ def get_input_encoding(args: Namespace) -> EncodingMode:
 
 def validate_args(args: Namespace, parser: ArgumentParser) -> None:
     """Validate whether can produce the intermediary artifacts from the input."""
-    if args.store_hugr and args.input_stage >= Stage.HUGR:
-        parser.error("Cannot produce a HUGR artifact from the given input.")
-    if args.store_hugr_mlir and args.input_stage >= Stage.HUGR_MLIR:
-        parser.error(
-            "Cannot produce a hugr-dialect MLIR artifact from the given input.",
-        )
-    if args.store_llvm_mlir and args.input_stage >= Stage.LOWERED_MLIR:
-        parser.error(
-            "Cannot produce an llvm-dialect MLIR artifact from the given input.",
-        )
-    if args.store_llvm and args.input_stage >= Stage.LLVM:
-        parser.error("Cannot produce a LLVM artifact from the given input.")
+    store_requires = [
+        (args.store_hugr, Stage.HUGR),
+        (args.store_hugr_mlir, Stage.HUGR_MLIR),
+        (args.store_llvm_mlir, Stage.LOWERED_MLIR),
+        (args.store_llvm, Stage.LLVM),
+        (args.store_obj, Stage.OBJECT),
+        (args.store_bin, Stage.EXECUTABLE),
+    ]
+
+    for store, stage in store_requires:
+        if store is not None and args.input_stage >= stage:
+            parser.error(
+                f"Cannot produce a {stage.name} artifact from the given input.",
+            )
 
 
 def main() -> None:
@@ -237,6 +251,8 @@ def main() -> None:
         hugr_mlir_out=args.store_hugr_mlir,
         lowered_mlir_out=args.store_llvm_mlir,
         llvm_out=args.store_llvm,
+        obj_out=args.store_obj,
+        bin_out=args.store_bin,
         no_run=args.no_run,
         module_name=args.module_name,
     )

@@ -23,18 +23,25 @@ class StageCompiler(ABC):
         *,
         input_path: Path,
         input_encoding: EncodingMode,
+        output_path: Path | None,
         output_encoding: EncodingMode,
         temp_file: bool = False,
         module_name: str | None = None,
-    ) -> str | bytes:
+    ) -> str | bytes | Path:
         """Execute the translation command.
+
+        May return either the in-memory data, or a path to the output.
 
         :param input_path: The input file path.
         :param input_encoding: The input encoding mode.
+        :param output_path: Optional. A path to store the resulting artifact.
+            This parameter may be ignored. The in-memory output data will be
+            stored afterwards if required by the user.
         :param output_encoding: The output encoding mode.
         :param temp_file: Whether the input file is a temporary file,
             instead of a user-specified file.
         :param module_name: The name of the module being compiled.
+        :returns: Either the in-memory data, or a path to the output.
         """
 
     def _check_stage(self, data: StageData) -> None:
@@ -78,6 +85,7 @@ class StageCompiler(ABC):
             output_data = self._translate_data(
                 data.data,
                 data.encoding,
+                output_file,
                 output_mode,
                 module_name=module_name,
             )
@@ -85,25 +93,30 @@ class StageCompiler(ABC):
             output_data = self._translate_file(
                 data.data_path,
                 data.encoding,
+                output_file,
                 output_mode,
                 module_name=module_name,
             )
 
-        output = StageData(self.OUTPUT_STAGE, output_data, output_mode)
-
-        # Write the output file if requested.
-        if output_file:
-            self._store_artifact(output, output_file)
+        if isinstance(output_data, Path):
+            output = StageData.from_path(self.OUTPUT_STAGE, output_data, output_mode)
+            if output_file and output_file != output_data:
+                self._store_artifact(output, output_file)
+        else:
+            output = StageData(self.OUTPUT_STAGE, output_data, output_mode)
+            if output_file:
+                self._store_artifact(output, output_file)
 
         return output
 
-    def _translate_data(
+    def _translate_data(  # noqa: PLR0913
         self,
         input_data: str | bytes,
         input_encoding: EncodingMode,
+        output_path: Path | None,
         output_encoding: EncodingMode,
         module_name: str | None = None,
-    ) -> str | bytes:
+    ) -> str | bytes | Path:
         """Translate data encoded in-memory.
 
         First writes it to a temporary file, then translates it.
@@ -120,6 +133,7 @@ class StageCompiler(ABC):
         output = self.process_stage(
             input_path=input_path,
             input_encoding=input_encoding,
+            output_path=output_path,
             output_encoding=output_encoding,
             temp_file=True,
             module_name=module_name,
@@ -127,17 +141,19 @@ class StageCompiler(ABC):
         input_path.unlink()
         return output
 
-    def _translate_file(
+    def _translate_file(  # noqa: PLR0913
         self,
         path: Path,
         input_encoding: EncodingMode,
+        output_path: Path | None,
         output_encoding: EncodingMode,
         module_name: str | None = None,
-    ) -> str | bytes:
+    ) -> str | bytes | Path:
         """Translate data encoded in a file."""
         return self.process_stage(
             input_path=path,
             input_encoding=input_encoding,
+            output_path=output_path,
             output_encoding=output_encoding,
             temp_file=False,
             module_name=module_name,
