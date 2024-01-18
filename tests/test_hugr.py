@@ -3,8 +3,8 @@
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 
-from guppy.decorator import guppy  # type: ignore
-from guppy.module import GuppyModule  # type: ignore
+from guppylang.decorator import guppy  # type: ignore
+from guppylang.module import GuppyModule  # type: ignore
 
 from guppy_runner import run_guppy, run_guppy_module
 

@@ -10,8 +10,8 @@ license = "Apache-2.0"
 guppy-runner = "guppy_runner.__main__:main"
 
 [tool.poetry.dependencies]
-python = "^3.11"
-guppy = { git = "git@github.com:CQCL-DEV/guppy.git", rev = "ac4659c" }
+python = "^3.10"
+guppy = { git = "git@github.com:CQCL-DEV/guppy.git", rev = "e0761ff" }
 logging = "^0.4.9.6"
 
 [tool.poetry.group.dev.dependencies]

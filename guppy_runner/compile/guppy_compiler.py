@@ -4,7 +4,7 @@ import importlib.machinery
 import types
 from pathlib import Path
 
-from guppy.module import GuppyModule  # type: ignore
+from guppylang.module import GuppyModule  # type: ignore
 
 from guppy_runner.compile import CompilerError, StageCompiler
 from guppy_runner.stage import EncodingMode, Stage
