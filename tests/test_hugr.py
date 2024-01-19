@@ -18,11 +18,17 @@ def test_even_odd():
         suffix=".mlir",
     ) as temp_lower_mlir, NamedTemporaryFile(
         suffix=".ll",
-    ) as temp_llvm:
+    ) as temp_llvm, NamedTemporaryFile(
+        suffix=".o",
+    ) as temp_obj, NamedTemporaryFile(
+        suffix=".out",
+    ) as temp_bin:
         temp_hugr.close()
         temp_mlir.close()
         temp_lower_mlir.close()
         temp_llvm.close()
+        temp_obj.close()
+        temp_bin.close()
 
         # Just check that it runs.
         #
@@ -34,19 +40,24 @@ def test_even_odd():
             hugr_mlir_out=Path(temp_mlir.name),
             lowered_mlir_out=Path(temp_lower_mlir.name),
             llvm_out=Path(temp_llvm.name),
+            obj_out=Path(temp_obj.name),
+            bin_out=Path(temp_bin.name),
             no_run=True,
         )
 
 
 def test_from_module():
-    module = GuppyModule("module")
+    module = GuppyModule("my_module")
 
     @guppy(module)
-    def main(x: bool) -> bool:  # noqa: FBT001
-        return x
+    def main() -> bool:
+        return True
 
-    with NamedTemporaryFile(suffix=".ll") as temp_llvm:
-        temp_llvm.close()
+    with NamedTemporaryFile(suffix=".o") as temp_obj, NamedTemporaryFile(
+        suffix=".out",
+    ) as temp_bin:
+        temp_obj.close()
+        temp_bin.close()
 
         # Just check that it runs.
         #
@@ -54,6 +65,7 @@ def test_from_module():
         # so we have to assume that they are correct.
         assert run_guppy_module(
             module,
-            llvm_out=Path(temp_llvm.name),
+            obj_out=Path(temp_obj.name),
+            bin_out=Path(temp_bin.name),
             no_run=True,
         )

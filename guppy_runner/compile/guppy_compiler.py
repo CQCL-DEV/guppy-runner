@@ -4,6 +4,7 @@ import importlib.machinery
 import types
 from pathlib import Path
 
+from guppylang.decorator import guppy  # type: ignore
 from guppylang.module import GuppyModule  # type: ignore
 
 from guppy_runner.compile import CompilerError, StageCompiler
@@ -76,22 +77,23 @@ class GuppyCompiler(StageCompiler):
         source_path: Path | None,
         module_name: str | None = None,
     ) -> GuppyModule:
-        # TODO: Using a default module requires fixing `set_module` first.
-        # https://github.com/CQCL/guppy/issues/101
-        module_name = module_name or "module"
-
-        if module_name:
+        if module_name is not None:
             if module_name not in py_module.__dir__():
                 raise MissingModuleError(module_name, source_path)
             module = getattr(py_module, module_name)
         else:
-            raise NotImplementedError
+            for module_id in guppy.registered_modules():
+                if module_id.module == py_module or module_id.filename == source_path:
+                    module = guppy.take_module(module_id)
+                    break
+            else:
+                raise MissingModuleError(None, source_path)
 
         if not isinstance(module, GuppyModule):
             assert module_name is not None
             raise NotAGuppyError(source_path)
         if not module.contains_function("main"):
-            raise MissingMainError(module_name, source_path)
+            raise MissingMainError(module_name or module.__name__, source_path)
 
         return module
 
@@ -122,9 +124,11 @@ class InvalidGuppyModulePathError(GuppyCompilerError):
 class MissingModuleError(GuppyCompilerError):
     """Raised when a Guppy program cannot be loaded."""
 
-    def __init__(self, module: str, guppy: Path | None) -> None:
+    def __init__(self, module: str | None, guppy: Path | None) -> None:
         """Initialize the error."""
-        if guppy is None:
+        if module is None:
+            super().__init__("The Guppy program does not define a local module.")
+        elif guppy is None:
             super().__init__(f"The Guppy program does not define a `{module}` module.")
         else:
             super().__init__(
