@@ -10,6 +10,8 @@ You must have the following installed:
 - [just](https://github.com/casey/just)
 - [cmake](https://cmake.org/download/)
 
+This repository uses git submodules to include the `hugr-mlir` and `qir-runner` projects. Make sure to run `git submodule init` after cloning this repository to initialize them.
+
 Run the following commands to install the dependencies.
 This will build the `hugr-mlir` and `qir-runner` projects, so it may take a while.
 
