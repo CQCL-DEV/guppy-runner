@@ -108,8 +108,8 @@ typing-extensions = "^4.9.0"
 
 [package.source]
 type = "git"
-url = "git@github.com:CQCL-DEV/guppy.git"
-reference = "f52a5de"
+url = "git@github.com:CQCL/guppy.git"
+reference = "f52a5de95972d028167f5800d16573c178c9e2be"
 resolved_reference = "f52a5de95972d028167f5800d16573c178c9e2be"
 
 [[package]]
@@ -608,4 +608,4 @@ test = ["covdefaults (>=2.3)", "coverage (>=7.2.7)", "coverage-enable-subprocess
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "069c716e12dae24996d1f82f13a7ad129bf9af588a01317cf62b13d028ec2be1"
+content-hash = "6909ce1246b9a59c8e183229fb86f3b4f4a40b1afc3b9404b48817626bf5ef1c"
