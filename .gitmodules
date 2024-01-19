@@ -1,0 +1,6 @@
+[submodule "ext/hugr-mlir"]
+	path = ext/hugr-mlir
+	url = git@github.com:CQCL/hugr-mlir.git
+[submodule "ext/qir-runner"]
+	path = ext/qir-runner
+	url = git@github.com:qir-alliance/qir-runner.git
