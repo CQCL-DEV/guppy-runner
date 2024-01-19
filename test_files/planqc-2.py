@@ -1,4 +1,5 @@
 from guppylang.decorator import guppy
+from guppylang.prelude.quantum import Qubit, measure, h, cx, z, x
 
 
 @guppy
