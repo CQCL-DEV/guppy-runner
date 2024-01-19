@@ -77,7 +77,7 @@ class GuppyCompiler(StageCompiler):
         module_name: str | None = None,
     ) -> GuppyModule:
         # TODO: Using a default module requires fixing `set_module` first.
-        # https://github.com/CQCL-DEV/guppy/issues/101
+        # https://github.com/CQCL/guppy/issues/101
         module_name = module_name or "module"
 
         if module_name:
