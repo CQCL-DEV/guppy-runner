@@ -2,8 +2,7 @@ guppy-runner
 ============
 
 ## Setup
-
-Currently this requires access to the private `guppy` repository.
+First, install [guppy](https:://github.com/CQCL/guppy).
 
 If you have `poetry` and `just` installed, you can run the following to get started:
 
